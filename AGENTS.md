@@ -33,7 +33,7 @@ transcriber.py  (venv)
 | `config/chattanooga-cpd.json` | OP25 multi_rx config template: trunking system, audio and terminal settings. `scanner.sh` overwrites the first device's `args`/`gains`/`ppm` from `scanner.conf`. |
 | `config/talkgroups.tsv` | `tgid<TAB>tag<TAB>priority`. A lower number is a higher priority and preempts other talkgroups. |
 | `config/whitelist-cpd.tsv` | The talkgroups OP25 will follow (CPD only). Reloaded dynamically. |
-| `op25/` | Upstream [boatbod/op25](https://github.com/boatbod/op25), cloned with depth 1. Treat it as vendored and avoid editing it. |
+| `op25/` | Upstream [boatbod/op25](https://github.com/boatbod/op25), its own git clone (depth 1) and gitignored here. Treat it as vendored and avoid editing it; changes wouldn't be tracked. To recreate: `git clone --depth 1 https://github.com/boatbod/op25.git op25 && ./build-op25.sh`. |
 | `local/` | Install prefix for OP25 (`lib/python3.12/site-packages`, `lib/x86_64-linux-gnu`). Build output; can be regenerated. |
 | `venv/` | Python venv created with `--system-site-packages`, so it can see the apt-installed GNU Radio. |
 | `logs/` | `op25.log`, `transcriber.log`, `transcripts.txt`, `transcripts.jsonl`, and `audio/` (WAVs, only with `--save-audio`). |
@@ -92,4 +92,4 @@ Talkgroup data comes from RadioReference, category "TN-Hamilton Co-Chattanooga" 
 - **Tune transcription:** edit `DEFAULT_PROMPT` (local vocabulary), `HALLUCINATIONS` and `clean_text()` in `transcriber.py`. To compare models, record with `--save-audio` and run them offline on the WAVs in `logs/audio/`.
 - **Rebuild OP25** after pulling upstream: `./build-op25.sh`.
 - **Testing:** there are no automated tests. Verify with a timed live run, e.g. `timeout 120 ./scanner.sh`, then check `logs/transcripts.jsonl` (the `proc_s` field shows transcription time) and `logs/transcriber.log` (`backlog` warnings mean Whisper can't keep up).
-- Not a git repo yet.
+- **Git:** the repo tracks only the project's own files (`AGENTS.md`, the scripts, `transcriber.py`, `config/`). `.gitignore` excludes `op25/`, `local/`, `venv/`, `logs/` and `__pycache__/`; don't commit them.
