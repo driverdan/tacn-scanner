@@ -1,0 +1,71 @@
+{
+    "channels": [
+        {
+            "name": "CPD Voice",
+            "device": "sdr0",
+            "trunking_sysname": "TACN Chattanooga",
+            "demod_type": "cqpsk",
+            "destination": "udp://127.0.0.1:23470",
+            "meta_stream_name": "",
+            "excess_bw": 0.2,
+            "filter_type": "rc",
+            "if_rate": 24000,
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "whitelist": "",
+            "blacklist": "",
+            "crypt_keys": ""
+        }
+    ],
+    "devices": [
+        {
+            "args": "rtl_tcp=192.168.8.132:1234",
+            "gains": "LNA:40",
+            "name": "sdr0",
+            "offset": 0,
+            "ppm": 0.0,
+            "usable_bw_pct": 0.85,
+            "rate": 1000000,
+            "tunable": true
+        }
+    ],
+    "trunking": {
+        "module": "tk_p25.py",
+        "chans": [
+            {
+                "nac": "0x2a0",
+                "wacn": "0xbee00",
+                "sysid": "0x2a5",
+                "sysname": "TACN Chattanooga",
+                "control_channel_list": "855.2125,856.2375,856.7625,857.2375",
+                "whitelist": "/home/dan/Projects/scanner/config/whitelist-cpd.tsv",
+                "tgid_tags_file": "/home/dan/Projects/scanner/config/talkgroups.tsv",
+                "rid_tags_file": "",
+                "tdma_cc": false,
+                "crypt_behavior": 2
+            }
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio0",
+                "device_name": "pulse",
+                "udp_port": 23456,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "http:127.0.0.1:8080",
+        "curses_plot_interval": 0.1,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100
+    }
+}

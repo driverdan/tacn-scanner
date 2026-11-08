@@ -1,0 +1,25 @@
+1027	HC CPD A (Adam Dispatch)	1
+1029	HC CPD B (Baker Dispatch)	1
+1051	HC CPD C (Charlie Dispatch)	1
+1031	HC CPD INFO	2
+1035	HC CPD Car-to-Car	3
+1041	HC CPD Special Ops	3
+1043	HC CPD City Net 2	3
+1049	HC CPD City Net 1	3
+1053	HC CPD Detectives	3
+1055	HC CPD SWAT 1	3
+1569	HC CPD Tac 1	3
+1571	HC CPD Tac 2	3
+1573	HC CPD Tac 3	3
+1061	HC CFD Dispatch	4
+1075	HC CFD Fireground 1	5
+1077	HC CFD Fireground 2	5
+1223	HCSO Dispatch East	4
+1225	HCSO Dispatch West	4
+1307	HC County Net 1	5
+1309	HC County Net 2	5
+1169	HC Disaster 1	5
+1137	CHA Airport Police Disp	2
+1141	CHA Airport Police Tac	3
+1139	CHA Airport Fire Disp	2
+1143	CHA Airport Fire Tac (Crash)	3
