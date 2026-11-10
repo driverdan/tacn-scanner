@@ -39,7 +39,7 @@
                 "sysid": "0x2a5",
                 "sysname": "TACN Chattanooga",
                 "control_channel_list": "855.2125,856.2375,856.7625,857.2375",
-                "whitelist": "/home/dan/Projects/scanner/config/whitelist-cpd.tsv",
+                "whitelist": "/home/dan/Projects/scanner/config/whitelist.tsv",
                 "tgid_tags_file": "/home/dan/Projects/scanner/config/talkgroups.tsv",
                 "rid_tags_file": "",
                 "tdma_cc": false,
