@@ -1,44 +1,44 @@
-1027	HC CPD A (Adam Dispatch)	1
-1029	HC CPD B (Baker Dispatch)	1
-1051	HC CPD C (Charlie Dispatch)	1
-1031	HC CPD INFO	2
-1035	HC CPD Car-to-Car	3
-1041	HC CPD Special Ops	3
-1043	HC CPD City Net 2	3
-1049	HC CPD City Net 1	3
-1053	HC CPD Detectives	3
-1055	HC CPD SWAT 1	3
-1569	HC CPD Tac 1	3
-1571	HC CPD Tac 2	3
-1573	HC CPD Tac 3	3
-1061	HC CFD Dispatch	4
-1075	HC CFD Fireground 1	5
-1077	HC CFD Fireground 2	5
-1223	HCSO Dispatch East	4
-1225	HCSO Dispatch West	4
-1307	HC County Net 1	5
-1309	HC County Net 2	5
-1169	HC Disaster 1	5
-1137	CHA Airport Police Disp	2
-1141	CHA Airport Police Tac	3
-1139	CHA Airport Fire Disp	2
-1143	CHA Airport Fire Tac (Crash)	3
-1491	HCSO Info	5
-1323	HCSO Talk	5
-1227	HCSO CID	5
-1229	HCSO Narcotics	5
-2061	HCSO Narcotics/Special Ops	5
-1233	HCSO SWAT 1	5
-1493	HCSO SWAT 2	5
-1235	HCSO Fugitive	5
-1237	HCSO Civil	5
-1281	HCSO Park Rangers	5
-1395	HCSO Court Security	5
-1325	HCSO Jail Ops	5
-1241	HC Fire Dispatch Main	4
-1165	HC EMS Main	4
-1191	East Ridge PD Main	4
-1367	Soddy-Daisy PD Main	4
-1401	UTC Police Dispatch	4
-1389	Erlanger Life Force Disp	5
-1391	Erlanger Life Force MedNet	5
+1027	HC CPD A (Adam Dispatch)
+1029	HC CPD B (Baker Dispatch)
+1051	HC CPD C (Charlie Dispatch)
+1031	HC CPD INFO
+1035	HC CPD Car-to-Car
+1041	HC CPD Special Ops
+1043	HC CPD City Net 2
+1049	HC CPD City Net 1
+1053	HC CPD Detectives
+1055	HC CPD SWAT 1
+1569	HC CPD Tac 1
+1571	HC CPD Tac 2
+1573	HC CPD Tac 3
+1061	HC CFD Dispatch
+1075	HC CFD Fireground 1
+1077	HC CFD Fireground 2
+1223	HCSO Dispatch East
+1225	HCSO Dispatch West
+1307	HC County Net 1
+1309	HC County Net 2
+1169	HC Disaster 1
+1137	CHA Airport Police Disp
+1141	CHA Airport Police Tac
+1139	CHA Airport Fire Disp
+1143	CHA Airport Fire Tac (Crash)
+1491	HCSO Info
+1323	HCSO Talk
+1227	HCSO CID
+1229	HCSO Narcotics
+2061	HCSO Narcotics/Special Ops
+1233	HCSO SWAT 1
+1493	HCSO SWAT 2
+1235	HCSO Fugitive
+1237	HCSO Civil
+1281	HCSO Park Rangers
+1395	HCSO Court Security
+1325	HCSO Jail Ops
+1241	HC Fire Dispatch Main
+1165	HC EMS Main
+1191	East Ridge PD Main
+1367	Soddy-Daisy PD Main
+1401	UTC Police Dispatch
+1389	Erlanger Life Force Disp
+1391	Erlanger Life Force MedNet

@@ -1,17 +1,17 @@
 #!/bin/bash
-# Run trunk-recorder (Docker) against the same SDRs and CPD talkgroups as OP25, for comparison.
+# Run the scanner: trunk-recorder (Docker) records the whitelisted talkgroups, tr_transcriber.py transcribes them.
 #   Recordings: logs/trunk-recorder/media/tacn/YYYY/M/D/<tgid>-<time>_<freq>-call_N.{wav,json}
 #   Log:        logs/trunk-recorder/trunk-recorder.log
 #   Transcripts: printed here, and appended to logs/trunk-recorder/transcripts.{txt,jsonl} (tr_transcriber.py)
 # Usage: ./trunk-recorder.sh [-- tr_transcriber options]   e.g. -- --backfill
-# Settings come from config/scanner.conf (env vars of the same name override), like scanner.sh:
+# Settings come from config/scanner.conf (env vars of the same name override):
 #   SDR_*   first dongle  → low half of the site,  854.3875-856.2375 (incl. primary CC 855.2125)
 #   SDR2_*  second dongle → high half of the site, 856.7625-858.4375
 #   Leave SDR2_PORT and SDR2_ARGS empty to run on the first dongle alone (partial coverage).
 #   Window centers/rates live in config/trunk-recorder.json. TR_IMAGE overrides the Docker image.
-#   TRANSCRIBE=0 records without Whisper; WHISPER_MODEL picks the model, as for scanner.sh.
+#   TRANSCRIBE=0 records without Whisper; WHISPER_MODEL picks the model.
 # The terminal shows only transcripts, warnings and errors; the full output is in the two log files.
-# rtl_tcp takes only one client per dongle: stop scanner.sh first.
+# rtl_tcp takes only one client per dongle: stop anything else using the SDRs first.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="$ROOT/config/trunk-recorder.json"
@@ -43,13 +43,10 @@ for a in "$SDR_ARGS" "${SDR2_ARGS:-}"; do
         exit 1
     fi
 done
-if pgrep -f 'multi_rx\.py' >/dev/null; then
-    echo "OP25 (multi_rx.py) is running and holds the SDR. Stop scanner.sh first." >&2
-    exit 1
-fi
 
 mkdir -p "$RUN_DIR/media"
-# Render config.json (SDR settings per source) and talkgroups.csv (OP25 whitelist + tags/priorities).
+# Render config.json (SDR settings per source) and talkgroups.csv (whitelist + tags). Every talkgroup
+# gets trunk-recorder's default priority 1: record whenever a recorder is free on its source.
 python3 - "$TEMPLATE" "$RUN_DIR" "$ROOT/config/whitelist.tsv" "$ROOT/config/talkgroups.tsv" \
     "$SDR_ARGS" "$SDR_GAINS" "$SDR_PPM" "${SDR2_ARGS:-}" "$SDR2_GAINS" "$SDR2_PPM" <<'PY'
 import csv, json, re, sys
@@ -71,14 +68,14 @@ json.dump(cfg, open(f"{run_dir}/config.json", "w"), indent=4)
 tags = {}
 for row in csv.reader(open(tags_path), delimiter="\t"):
     if row and row[0].strip().isdigit():
-        tags[int(row[0])] = (row[1] if len(row) > 1 else "", row[2] if len(row) > 2 else "")
+        tags[int(row[0])] = row[1] if len(row) > 1 else ""
 wl = [int(l.split()[0]) for l in open(wl_path) if l.strip() and l.split()[0].isdigit()]
 with open(f"{run_dir}/talkgroups.csv", "w", newline="") as f:
     w = csv.writer(f)
-    w.writerow(["Decimal", "Mode", "Alpha Tag", "Description", "Tag", "Category", "Priority"])
+    w.writerow(["Decimal", "Mode", "Alpha Tag", "Description", "Tag", "Category"])
     for tg in wl:
-        name, prio = tags.get(tg, (str(tg), ""))
-        w.writerow([tg, "D", name, name, "Public Safety", "Chattanooga", prio or 3])
+        name = tags.get(tg) or str(tg)
+        w.writerow([tg, "D", name, name, "Public Safety", "Chattanooga"])
 
 # Coverage check against the Chattanooga Simulcast site's 16 channels (RadioReference sid 6355).
 site = [854.3875, 854.9125, 855.1875, 855.2125, 855.9875, 856.0875, 856.2375, 856.7625,

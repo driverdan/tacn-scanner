@@ -3,14 +3,7 @@ __pycache__/
 *.py[cod]
 venv/
 
-# Upstream OP25 is its own git clone (boatbod/op25), not vendored here:
-#   git clone --depth 1 https://github.com/boatbod/op25.git op25
-op25/
-
-# OP25 install prefix (regenerate with ./build-op25.sh)
-local/
-
-# Runtime output: logs, transcripts, rendered OP25 config, saved WAVs
+# Runtime output: logs, transcripts, rendered trunk-recorder config, recorded calls
 logs/
 
 # Editor / OS

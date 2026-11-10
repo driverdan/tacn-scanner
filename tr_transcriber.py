@@ -3,17 +3,19 @@
 
 trunk-recorder writes one audio file plus one JSON per call under its captureDir
 (<media>/<system>/YYYY/M/D/<tgid>-<epoch>_<freq>-call_N.{wav,json}); the JSON appears once the
-call is over. This program watches for new call JSONs, transcribes the audio with the same
-Whisper setup as transcriber.py, and splits the text back into the call's transmissions
-(freqList/srcList) using word timestamps, so each line carries the radio ID that spoke it.
+call is over. This program watches for new call JSONs, transcribes the audio with
+faster-whisper, and splits the text back into the call's transmissions (freqList/srcList)
+using word timestamps, so each line carries the radio ID that spoke it.
 
-Output matches transcriber.py's (one record per transmission), written to
-<outdir>/transcripts.{txt,jsonl}. Calls already in transcripts.jsonl are never redone.
+Output is one record per transmission, written to <outdir>/transcripts.{txt,jsonl}.
+Calls already in transcripts.jsonl are never redone.
 """
 import argparse
 import datetime as dt
 import json
 import os
+import re
+import sys
 import time
 import wave
 from math import gcd
@@ -21,10 +23,130 @@ from math import gcd
 import numpy as np
 from scipy.signal import resample_poly
 
-from transcriber import PROMPTS_FILE, Prompts, load_model, log, split_words, transcribe
-
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PENDING_TIMEOUT = 120  # seconds a new call may wait for its WAV
+
+# Vocabulary hint for Whisper (biases spelling of local names/jargon).
+DEFAULT_PROMPT = (
+    "Chattanooga police dispatch radio. Adam, Baker, Charlie, David, Edward, Frank. "
+    "10-4, copy, en route, on scene, 10-8, 10-7, 10-23, signal, subject, suspect, "
+    "Hamilton County, Brainerd, East Ridge, Red Bank, Hixson, Lookout Mountain, "
+    "Highway 153, I-24, I-75, Market Street, Broad Street, MLK, Amnicola, Shallowford."
+)
+
+# Whisper hallucinates these on noise/silence.
+HALLUCINATIONS = {
+    "", "you", "thank you.", "thank you", "thanks for watching!", "thanks for watching.",
+    "bye.", "bye", ".", "okay.", "so", "uh", "um",
+}
+
+
+_REPEAT = re.compile(r"(\b.{2,30}?)(?:[,.]?\s+\1){3,}", re.IGNORECASE)
+
+
+def clean_text(text):
+    """Collapse Whisper repetition loops ("10-8, 10-8, 10-8, ...") and drop known hallucinations."""
+    text = _REPEAT.sub(r"\1", text).strip()
+    return "" if text.lower() in HALLUCINATIONS else text
+
+
+def split_words(segments, txs):
+    """Assign each word to the transmission it falls in (by word midpoint)."""
+    texts = [[] for _ in txs]
+    starts = [t[0] for t in txs]
+    for seg in segments:
+        for w in seg.words or []:
+            mid = (w.start + w.end) / 2
+            i = max([k for k, s in enumerate(starts) if s <= mid] or [0])
+            texts[i].append(w.word)
+    return [clean_text("".join(t).strip()) for t in texts]
+
+
+def load_model(name, compute_type="int8", threads=None):
+    from faster_whisper import WhisperModel
+    threads = threads or max(1, (os.cpu_count() or 4) // 2)
+    log(f"loading whisper model {name} ({compute_type}, {threads} threads)...")
+    model = WhisperModel(name, device="cpu", compute_type=compute_type, cpu_threads=threads)
+    log("whisper ready")
+    return model
+
+
+def transcribe(model, audio16k, prompt=DEFAULT_PROMPT, beam_size=5, word_timestamps=False, **overrides):
+    """Run Whisper on 16 kHz float32 audio with the settings tuned for radio traffic; returns segments.
+
+    `overrides` replace or add faster-whisper transcribe() options (testset.py score --set uses this)."""
+    opts = dict(
+        language="en", beam_size=beam_size, vad_filter=True,
+        vad_parameters={"min_silence_duration_ms": 500},
+        initial_prompt=prompt, condition_on_previous_text=False,
+        no_speech_threshold=0.6, log_prob_threshold=-1.0, word_timestamps=word_timestamps,
+    )
+    opts.update(overrides)
+    segments, _ = model.transcribe(audio16k, **opts)
+    return list(segments)
+
+
+def log(msg):
+    sys.stderr.write(f"{dt.datetime.now():%H:%M:%S} {msg}\n")
+    sys.stderr.flush()
+
+
+PROMPTS_FILE = os.path.join(ROOT, "config", "prompts.json")
+CONTEXT_CHARS = 400  # cap on recent-line context; Whisper keeps only the last ~223 prompt tokens
+
+
+class Prompts:
+    """Whisper initial prompts: a per-talkgroup base prompt from config/prompts.json (re-read when it
+    changes; DEFAULT_PROMPT if it's missing), optionally followed by the last few lines transcribed on
+    the same talkgroup, so Whisper hears each transmission as part of the conversation."""
+
+    def __init__(self, path=PROMPTS_FILE, context_lines=0, context_window=300.0):
+        self.path, self.context_lines, self.context_window = path, context_lines, context_window
+        self.mtime, self.default, self.by_tg = None, DEFAULT_PROMPT, {}
+        self.recent = {}  # tgid -> [(time, text)]
+        self._load()
+
+    def _load(self):
+        try:
+            mtime = os.stat(self.path).st_mtime if self.path else None
+        except OSError:
+            mtime = None
+        if mtime is None or mtime == self.mtime:
+            return
+        self.mtime = mtime
+        try:
+            with open(self.path) as f:
+                cfg = json.load(f)
+            by_tg = {int(tg): g["prompt"] for g in cfg.get("groups", []) for tg in g.get("tgids", [])}
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            log(f"warning: ignoring {self.path}: {e!r}")
+            return
+        self.default, self.by_tg = cfg.get("default", DEFAULT_PROMPT), by_tg
+
+    def base(self, tgid):
+        self._load()
+        try:
+            return self.by_tg.get(int(tgid), self.default)
+        except (TypeError, ValueError):
+            return self.default
+
+    def remember(self, tgid, t, text):
+        if self.context_lines and tgid is not None and text:
+            lines = self.recent.setdefault(tgid, [])
+            lines.append((t, text))
+            del lines[:-self.context_lines]
+
+    def recent_lines(self, tgid, t):
+        return [text for when, text in self.recent.get(tgid, []) if 0 <= t - when <= self.context_window]
+
+    def build(self, tgid, t=None, recent=None):
+        """Prompt for a transmission on `tgid` at time `t`; `recent` overrides the remembered lines."""
+        lines = self.recent_lines(tgid, t) if recent is None else recent
+        lines = lines[-self.context_lines:] if self.context_lines else []
+        ctx = " ".join(lines)
+        if len(ctx) > CONTEXT_CHARS:
+            ctx = ctx[-CONTEXT_CHARS:].split(" ", 1)[-1]
+        return f"{self.base(tgid)} {ctx}".strip()
 
 
 def wav_of(json_path):
@@ -125,7 +247,6 @@ def _transmissions(call):
     if srcs:
         return [(s.get("pos", 0.0), None, rid_at(s.get("pos", 0.0)), call.get("freq"), None) for s in srcs]
     return [(0.0, None, None, call.get("freq"), None)]
-
 
 
 def main():

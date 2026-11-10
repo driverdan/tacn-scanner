@@ -8,7 +8,7 @@
             "rate": 2400000,
             "gain": 40,
             "ppm": 0.0,
-            "digitalRecorders": 4,
+            "digitalRecorders": 7,
             "autoTune": true
         },
         {
@@ -18,7 +18,7 @@
             "rate": 2400000,
             "gain": 40,
             "ppm": 0.0,
-            "digitalRecorders": 4,
+            "digitalRecorders": 9,
             "autoTune": true
         }
     ],
