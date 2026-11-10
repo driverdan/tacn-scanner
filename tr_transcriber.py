@@ -91,6 +91,49 @@ def log(msg):
     sys.stderr.flush()
 
 
+class TalkgroupColors:
+    """A fixed terminal color per talkgroup, so lines from one talkgroup are easy to follow.
+
+    Talkgroups get colors in config/whitelist.tsv order, stepping through the palette so neighbours
+    (e.g. the three CPD dispatch channels) get unrelated hues; others fall back to tgid mod palette.
+    The palette is 24 xterm-256 colors that read on a dark background, so with more whitelisted
+    talkgroups than that a color is shared by two, the later one from the tail of the whitelist."""
+
+    PALETTE = [196, 202, 214, 226, 154, 46, 48, 51, 39, 33, 63, 99,
+               135, 171, 201, 205, 210, 223, 229, 157, 123, 117, 147, 219]
+    STEP = 7  # coprime with len(PALETTE): visits every color before repeating
+
+    def __init__(self, whitelist=os.path.join(ROOT, "config", "whitelist.tsv")):
+        self.order = {}
+        try:
+            with open(whitelist) as f:
+                for line in f:
+                    tok = line.split("#", 1)[0].split()
+                    if tok and tok[0].isdigit() and int(tok[0]) not in self.order:
+                        self.order[int(tok[0])] = len(self.order)
+        except OSError:
+            pass
+
+    def code(self, tg):
+        try:
+            i = self.order.get(int(tg), int(tg))
+        except (TypeError, ValueError):
+            i = 0
+        return self.PALETTE[i * self.STEP % len(self.PALETTE)]
+
+    def paint(self, tg, header, text):
+        c = self.code(tg)
+        return f"\033[1;38;5;{c}m{header}\033[22m {text}\033[0m"
+
+
+def use_color(mode):
+    if mode == "always":
+        return True
+    if mode == "never" or os.environ.get("NO_COLOR"):
+        return False
+    return sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
+
+
 PROMPTS_FILE = os.path.join(ROOT, "config", "prompts.json")
 CONTEXT_CHARS = 400  # cap on recent-line context; Whisper keeps only the last ~223 prompt tokens
 
@@ -270,7 +313,10 @@ def main():
                     help="append the last N lines heard on the same talkgroup to the prompt")
     ap.add_argument("--context-window", type=float, default=300.0, metavar="SEC",
                     help="only use context lines from the last SEC seconds")
+    ap.add_argument("--color", choices=["auto", "always", "never"], default="auto",
+                    help="color console lines by talkgroup (auto: when stdout is a terminal and NO_COLOR is unset)")
     args = ap.parse_args()
+    colors = TalkgroupColors() if use_color(args.color) else None
     if args.once:
         args.backfill = True
 
@@ -334,7 +380,7 @@ def main():
         proc = time.time() - started
 
         label = tag or f"TG {tg}"
-        recs, lines = [], []
+        recs, lines, shown = [], [], []
         for i, ((pos, length, rid, freq, errs), text) in enumerate(zip(txs, texts)):
             if length is None:
                 nxt = txs[i + 1][0] if i + 1 < len(txs) else dur
@@ -348,15 +394,17 @@ def main():
                 "error_count": errs, "call": key, "wav": audio_path,
             })
             if text:
-                lines.append(f"[{ts:%H:%M:%S}] {label}" + (f" ({tg})" if tag else "")
-                             + (f" RID {rid}" if rid else "") + f": {text}")
+                header = (f"[{ts:%H:%M:%S}] {label}" + (f" ({tg})" if tag else "")
+                          + (f" RID {rid}" if rid else "") + ":")
+                lines.append(f"{header} {text}")
+                shown.append(colors.paint(tg, header, text) if colors else lines[-1])
         with open(jsonl_path, "a") as f:
             for r in recs:
                 f.write(json.dumps(r) + "\n")
         if lines:
             with open(txt_path, "a") as f:
                 f.write("\n".join(lines) + "\n")
-            print("\n".join(lines), flush=True)
+            print("\n".join(shown), flush=True)
         done.add(key)
         if len(pending) > 3:
             log(f"warning: transcription backlog {len(pending)} calls (last {dur:.1f}s call took {proc:.1f}s)")

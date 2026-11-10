@@ -49,7 +49,7 @@ WHISPER_MODEL=distil-large-v3 ./trunk-recorder.sh
 ./venv/bin/python tr_transcriber.py --once   # offline: transcribe every untranscribed call, then exit
 ```
 
-In the terminal, `trunk-recorder.sh` shows only transcripts, warnings and errors. trunk-recorder's info lines and the transcriber's status lines go only to `logs/trunk-recorder/trunk-recorder.log` and `transcriber.log`.
+In the terminal, `trunk-recorder.sh` shows only transcripts, warnings and errors. trunk-recorder's info lines and the transcriber's status lines go only to `logs/trunk-recorder/trunk-recorder.log` and `transcriber.log`. Transcript lines are colored by talkgroup (`TalkgroupColors` in `tr_transcriber.py`: a 24-color palette assigned in `whitelist.tsv` order, so the 25th talkgroup onward shares a color with an earlier one). Colors appear only on a terminal; `transcripts.txt` stays plain. `--color always|never` or `NO_COLOR=1` overrides that.
 
 `tr_transcriber.py` keeps track of finished calls through the `call` field in `transcripts.jsonl`, so restarting it never transcribes a call twice. New calls go ahead of the backfill. It needs `compressWav: false`: it reads the WAVs directly, and faster-whisper's `decode_audio` (PyAV) is broken in this venv. Splitting a call into transmissions relies on Whisper word timestamps, so a word at a key-up boundary sometimes lands on the neighbouring RID. Back-to-back transmissions from the same radio are merged.
 
@@ -57,7 +57,7 @@ trunk-recorder records only channels inside its fixed SDR windows, so covering t
 
 trunk-recorder gotchas:
 - It logs `Requested Gain of 40.2 not supported, driver using: 0`. Ignore it: gr-osmosdr's rtl_tcp `get_gain()` always returns 0, and the 40.2 dB gain is applied (verified on the wire).
-- Both dongles read low by about 2–3.4 kHz (roughly −3 to −4 ppm). trunk-recorder uses `autoTune: true` and may warn that the offset exceeds 3.5 ppm. Per-call `freq_error` and `freqList[].error_count` in the call JSON show tuning and decode quality.
+- Uncorrected, both dongles read low by about 3.3 and 3.7 kHz (−3.9 and −4.3 ppm), and trunk-recorder warned constantly that the AutoTune offset exceeded 3.5 ppm. `SDR_PPM`/`SDR2_PPM` are now −4 (the sign matches the measured error; +4 doubles it and the control channel barely decodes). rtl_tcp takes whole ppm only, so `autoTune: true` corrects the remaining 0 to −270 Hz. If the warnings come back, set the ppm from the `AutoTune:` values in `trunk-recorder.log` (Hz ÷ center MHz = ppm to add). Per-call `freq_error` and `freqList[].error_count` in the call JSON show tuning and decode quality.
 - Talkgroup priority: a talkgroup with priority N is recorded only when at least N digital recorders are idle on its source ("Not recording talkgroup. Priority is 5 but only 4 recorders are available."). `trunk-recorder.sh` writes no Priority column, so every talkgroup gets the default 1 and can always be recorded: `digitalRecorders` is 7 and 9, one per site channel in each source's window. Keep those counts in step with the windows if the centers change.
 
 ## Radio system facts
@@ -101,7 +101,7 @@ Talkgroup data comes from RadioReference, category "TN-Hamilton Co-Chattanooga" 
 ## Making changes
 
 - **Change what gets recorded:** edit `config/whitelist.tsv` and restart. Give new talkgroups names in `config/talkgroups.tsv`.
-- **Change the SDRs / tune reception:** in `config/scanner.conf`, set `SDR_HOST`/`SDR_PORT` (or `SDR_ARGS`), `SDR_GAINS` (currently `LNA:40`) and `SDR_PPM`, and the `SDR2_*` equivalents. Don't edit these in the JSON; they get overwritten at launch. Window centers, sample rates and `digitalRecorders` are in `config/trunk-recorder.json`. Local USB dongles (`rtl=0`) aren't set up: the container has no USB passthrough.
+- **Change the SDRs / tune reception:** in `config/scanner.conf`, set `SDR_HOST`/`SDR_PORT` (or `SDR_ARGS`), `SDR_GAINS` (currently `LNA:40`) and `SDR_PPM` (currently −4), and the `SDR2_*` equivalents. Don't edit these in the JSON; they get overwritten at launch. Window centers, sample rates and `digitalRecorders` are in `config/trunk-recorder.json`. Local USB dongles (`rtl=0`) aren't set up: the container has no USB passthrough.
 - **Tune transcription:** edit `DEFAULT_PROMPT` (local vocabulary), `HALLUCINATIONS` and `clean_text()` in `tr_transcriber.py`. Measure every change against the test set: `./venv/bin/python testset.py score --drafts` for the live baseline, then e.g. `testset.py score --set vad_filter=False --name no-vad`. Scoring normalizes case, punctuation and number formats ("10-8" = "ten eight"), and `transcribe()` passes extra keyword arguments straight to faster-whisper.
 - **What the test set showed** (2026-11-08, 187 clips, large-v3, call mode unless noted; `testset.py compare` reproduces it):
   - Current settings: 10.7% WER. Most errors are in transmissions under 2 s (25%; 12% at 2–5 s, 6% above).
