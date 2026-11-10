@@ -1,0 +1,42 @@
+{
+    "ver": 2,
+    "sources": [
+        {
+            "driver": "osmosdr",
+            "device": "rtl_tcp=192.168.8.132:1234",
+            "center": 855312500,
+            "rate": 2400000,
+            "gain": 40,
+            "ppm": 0.0,
+            "digitalRecorders": 4,
+            "autoTune": true
+        },
+        {
+            "driver": "osmosdr",
+            "device": "rtl_tcp=192.168.8.132:1235",
+            "center": 857600000,
+            "rate": 2400000,
+            "gain": 40,
+            "ppm": 0.0,
+            "digitalRecorders": 4,
+            "autoTune": true
+        }
+    ],
+    "systems": [
+        {
+            "shortName": "tacn",
+            "type": "p25",
+            "modulation": "qpsk",
+            "control_channels": [855212500, 856237500, 856762500, 857237500],
+            "talkgroupsFile": "talkgroups.csv",
+            "recordUnknown": false,
+            "hideEncrypted": true,
+            "compressWav": false,
+            "audioArchive": true,
+            "callLog": true
+        }
+    ],
+    "captureDir": "/app/media",
+    "frequencyFormat": "mhz",
+    "logLevel": "info"
+}
