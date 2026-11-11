@@ -1,113 +1,43 @@
 # Chattanooga PD Scanner
 
-A local radio scanner. It records Chattanooga Police Department and other Hamilton County public-safety traffic on the Tennessee Advanced Communications Network (TACN), a P25 trunked radio system, with trunk-recorder, and transcribes each call with Whisper as it finishes.
-
-## How it fits together
-
-```
-2 × RTL-SDR (R820T) ── rtl_tcp 192.168.8.132:1234 and :1235
-        │  IQ samples over TCP
-        ▼
-trunk-recorder  (Docker, robotastic/trunk-recorder:5.2.1)
-  • follows the control channel, records every whitelisted call inside its two SDR windows
-  • one WAV + one JSON per call → logs/trunk-recorder/media/
-        │  files
-        ▼
-tr_transcriber.py  (venv)
-  • watches media/ for finished calls
-  • faster-whisper large-v3 (CPU, int8), one pass per call, split back per transmission
-  • → stdout + logs/trunk-recorder/transcripts.{txt,jsonl}
-```
-
-`trunk-recorder.sh` starts both. The transcriber runs in the background and is killed when trunk-recorder exits. Nothing plays audio live; calls are recorded and transcribed only.
+Read `README.md` first. It covers what the project does, the architecture, setup, running, configuration, output files, reception tuning, the test set and its results, and the radio system and talkgroups. This file holds what's only relevant when changing the code.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `trunk-recorder.sh` | Main launcher. Loads `config/scanner.conf`, renders `config.json` and `talkgroups.csv` into `logs/trunk-recorder/` (mounted as `/app`), starts `tr_transcriber.py` (unless `TRANSCRIBE=0`; arguments after `--` go to it) and runs [trunk-recorder](https://github.com/TrunkRecorder/trunk-recorder) in Docker. Records to `logs/trunk-recorder/media/`. |
-| `tr_transcriber.py` | Whisper transcription. Watches `logs/trunk-recorder/media/` for finished calls (the JSON lands first, and the WAV is transcribed once it has settled). Transcribes each call once with word timestamps, then splits the text back into transmissions using the call JSON's `freqList`/`srcList`, so every line has its RID. Writes one record per transmission to `logs/trunk-recorder/transcripts.{txt,jsonl}`. Also holds the Whisper helpers `testset.py` uses (`load_model()`, `transcribe()`, `clean_text()`, `split_words()`, `Prompts`). `--help` lists the options. |
-| `testset.py` | Hand-labelled WER test set. `label --add N` samples N random transmissions from the transcripts, copies their calls into `testset/calls/`, then plays each clip and asks for the correct text (prefilled with the live transcript; `--blank` starts empty). `score` re-transcribes the labelled clips and prints WER with breakdowns; `--drafts` scores the saved live transcripts instead, `--mode clip` transcribes each transmission alone (default `call` matches `tr_transcriber.py`), and `--set key=value` overrides any faster-whisper option. `compare` re-scores every saved run in `testset/results/` against the current labels, side by side, so fixing a label doesn't mean re-running Whisper. `score --prompts FILE` and `--context N` test per-talkgroup prompts and recent-line context. |
-| `testset/` | `clips.jsonl` (sampled transmissions), `labels.jsonl` (labels, newest line per clip wins), `calls/` (call WAV+JSON copies), `results/` (per-clip output of each score run). Not gitignored. |
-| `config/scanner.conf` | User settings (bash `KEY=value`): both SDRs (`SDR_*` and `SDR2_*`: host/port or full `*_ARGS`, gains, ppm), `TRANSCRIBE`, `WHISPER_MODEL`. An env var of the same name overrides the file. |
-| `config/trunk-recorder.json` | trunk-recorder config template. Two sources (low and high half of the site). `trunk-recorder.sh` overwrites each source's `device`/`gain`/`ppm` from `scanner.conf`. |
-| `config/whitelist.tsv` | The talkgroups that get recorded, one tgid per line: CPD, HCSO, the CHA airport, and the main city/county fire, county EMS, East Ridge, Soddy-Daisy and UTC police, and Erlanger Life Force channels. Read only at startup. |
-| `config/talkgroups.tsv` | `tgid<TAB>tag`. Names for the talkgroups (may list more than the whitelist). |
-| `config/prompts.json` (optional, doesn't exist) | Per-talkgroup Whisper prompts: `{"default": "...", "groups": [{"name": ..., "tgids": [...], "prompt": "..."}]}`. Read via `--prompts` (re-read when it changes); `DEFAULT_PROMPT` is used when it's missing. Per-agency prompts tested worse, see below. |
+| `trunk-recorder.sh` | Main launcher. Loads `config/scanner.conf`, renders `config.json` and `talkgroups.csv` into `logs/trunk-recorder/` (mounted as `/app`), starts `tr_transcriber.py` in the background (unless `TRANSCRIBE=0`; arguments after `--` go to it) and runs trunk-recorder in Docker. The transcriber is killed when trunk-recorder exits. It writes no Priority column to `talkgroups.csv`. |
+| `tr_transcriber.py` | Whisper transcription. Watches `logs/trunk-recorder/media/` for finished calls (the JSON lands first, and the WAV is transcribed once it has settled). Transcribes each call once with word timestamps, then splits the text back into transmissions using the call JSON's `freqList`/`srcList`. Tracks finished calls through the `call` field in `transcripts.jsonl`. Also holds the Whisper helpers `testset.py` uses (`load_model()`, `transcribe()`, `clean_text()`, `split_words()`, `Prompts`) and `TalkgroupColors`. |
+| `testset.py` | Hand-labelled WER test set. `--mode clip` transcribes each transmission alone (default `call` matches `tr_transcriber.py`); `score --prompts FILE` and `--context N` test per-talkgroup prompts and recent-line context. `--help` covers the rest. |
+| `testset/` | `clips.jsonl`, `labels.jsonl` (newest line per clip wins), `calls/` (call WAV+JSON copies), `results/` (per-clip output of each score run). Tracked in git. |
+| `config/` | See README. `trunk-recorder.json` is a template; `trunk-recorder.sh` overwrites each source's `device`/`gain`/`ppm`. |
 | `venv/` | Python venv (created with `--system-site-packages`). |
-| `logs/trunk-recorder/` | The run directory: rendered `config.json` and `talkgroups.csv`, `trunk-recorder.log`, `media/`, `transcriber.log` and `transcripts.{txt,jsonl}`. Files directly under `logs/` (`op25.log`, `transcripts.*`, …) are left over from the earlier OP25 setup. |
+| `logs/trunk-recorder/` | The run directory. Files directly under `logs/` (`op25.log`, `transcripts.*`, …) are left over from the earlier OP25 setup. |
 
-## Running
+## Implementation notes
 
-```bash
-./trunk-recorder.sh                 # trunk-recorder in Docker on both dongles + live transcription
-SDR2_PORT= ./trunk-recorder.sh      # first dongle only (7 of 16 site channels)
-SDR_HOST=10.0.0.5 ./trunk-recorder.sh   # any scanner.conf setting can be overridden from the env
-TRANSCRIBE=0 ./trunk-recorder.sh    # record only
-WHISPER_MODEL=distil-large-v3 ./trunk-recorder.sh
-./trunk-recorder.sh -- --backfill   # also transcribe calls recorded earlier that aren't transcribed yet
-./venv/bin/python tr_transcriber.py --once   # offline: transcribe every untranscribed call, then exit
-```
-
-In the terminal, `trunk-recorder.sh` shows only transcripts, warnings and errors. trunk-recorder's info lines and the transcriber's status lines go only to `logs/trunk-recorder/trunk-recorder.log` and `transcriber.log`. Transcript lines are colored by talkgroup (`TalkgroupColors` in `tr_transcriber.py`: a 24-color palette assigned in `whitelist.tsv` order, so the 25th talkgroup onward shares a color with an earlier one). Colors appear only on a terminal; `transcripts.txt` stays plain. `--color always|never` or `NO_COLOR=1` overrides that.
-
-`tr_transcriber.py` keeps track of finished calls through the `call` field in `transcripts.jsonl`, so restarting it never transcribes a call twice. New calls go ahead of the backfill. It needs `compressWav: false`: it reads the WAVs directly, and faster-whisper's `decode_audio` (PyAV) is broken in this venv. Splitting a call into transmissions relies on Whisper word timestamps, so a word at a key-up boundary sometimes lands on the neighbouring RID. Back-to-back transmissions from the same radio are merged.
-
-trunk-recorder records only channels inside its fixed SDR windows, so covering the site's 16 channels (854.3875–858.4375, about 4.05 MHz) takes two RTL-SDRs. Both are on `192.168.8.132`: port 1234 (`SDR_*`) is centered on 855.3125 MHz and covers 854.3875–856.2375, including the primary CC. Port 1235 (`SDR2_*`) is centered on 857.6 MHz and covers 856.7625–858.4375. Centers live in `config/trunk-recorder.json`; at launch the script prints which site channels each window covers. The user is in the `docker` group. A shell started before that was set up needs `sg docker -c './trunk-recorder.sh'`. Stop it with `docker stop trunk-recorder`.
-
-trunk-recorder gotchas:
-- It logs `Requested Gain of 40.2 not supported, driver using: 0`. Ignore it: gr-osmosdr's rtl_tcp `get_gain()` always returns 0, and the 40.2 dB gain is applied (verified on the wire).
-- Uncorrected, both dongles read low by about 3.3 and 3.7 kHz (−3.9 and −4.3 ppm), and trunk-recorder warned constantly that the AutoTune offset exceeded 3.5 ppm. `SDR_PPM`/`SDR2_PPM` are now −4 (the sign matches the measured error; +4 doubles it and the control channel barely decodes). rtl_tcp takes whole ppm only, so `autoTune: true` corrects the remaining 0 to −270 Hz. If the warnings come back, set the ppm from the `AutoTune:` values in `trunk-recorder.log` (Hz ÷ center MHz = ppm to add). Per-call `freq_error` and `freqList[].error_count` in the call JSON show tuning and decode quality.
-- Talkgroup priority: a talkgroup with priority N is recorded only when at least N digital recorders are idle on its source ("Not recording talkgroup. Priority is 5 but only 4 recorders are available."). `trunk-recorder.sh` writes no Priority column, so every talkgroup gets the default 1 and can always be recorded: `digitalRecorders` is 7 and 9, one per site channel in each source's window. Keep those counts in step with the windows if the centers change.
-
-## Radio system facts
-
-- **System:** TACN, P25 Phase II capable. WACN `BEE00`, SysID `2A5`. RadioReference sid 6355.
-- **Site:** Chattanooga Simulcast, RFSS 2, site 10 (shown as "Site 2.10"), NAC `2A0`.
-- **Control channels:** 855.2125 primary, with alternates 856.2375, 856.7625 and 857.2375.
-- **Site channels (16, per RadioReference):** 854.3875, 854.9125, 855.1875, 855.2125c, 855.9875, 856.0875, 856.2375c, 856.7625c, 856.9625, 857.2375c, 857.4375, 857.4875, 857.7125, 857.9375, 858.2375, 858.4375 ("c" marks a control channel; the alternates likely carry voice when not active). CPD calls have been seen on 9 of them so far: all of the voice channels except 855.1875, 856.9625 and 858.4375.
-- **Voice channels:** span about 854.39–858.44 MHz. That's wider than one RTL's bandwidth (about 2.4 MHz), hence the two dongles.
-- **CPD voice:** observed as Phase I FDMA in the clear.
-- **CPD talkgroups:**
-  - 1027, 1029, 1051: Adam, Baker and Charlie dispatch
-  - 1031: Info
-  - 1035: Car-to-Car
-  - 1041, 1043, 1049, 1053, 1055: Special Ops, City Net 2, City Net 1, Detectives, SWAT 1
-  - 1569, 1571, 1573: Tac 1–3
-- **HCSO (Hamilton County Sheriff) talkgroups**, from RadioReference category "TN-Hamilton Co-Public Safety" (tgCat 14594):
-  - 1223, 1225: Dispatch East and West
-  - 1491, 1323: Info and Talk
-  - 1227, 1229, 2061: CID, Narcotics, and Narcotics/Special Ops
-  - 1233, 1493: SWAT 1 and 2
-  - 1235, 1237, 1281, 1395, 1325: Fugitive, Civil, Park Rangers, Court Security, Jail Ops
-- **Other whitelisted talkgroups** (RadioReference categories 14617, 14594, 36448, 36449, 36675, 21393), all seen live on the site:
-  - 1137, 1141, 1139, 1143: CHA Airport Police Dispatch and Tac, Airport Fire Dispatch and Tac
-  - 1061, 1241: Chattanooga Fire Dispatch, Hamilton County Fire Dispatch Main
-  - 1165: Hamilton County EMS Main
-  - 1191, 1367, 1401: East Ridge PD Main, Soddy-Daisy PD Main, UTC Police Dispatch
-  - 1389, 1391: Erlanger Life Force Dispatch and Med Net (medevac helicopter)
-- **Encryption:** encrypted calls are not transcribed (`hideEncrypted: true`; `tr_transcriber.py` also skips calls marked `encrypted`). County "HC Law" (1125) and Sheriff SRO (1127) are listed as encrypted.
-
-Talkgroup data comes from RadioReference, category "TN-Hamilton Co-Chattanooga" (tgCat 14617). Confirm IDs against live traffic (`logs/trunk-recorder/trunk-recorder.log`) before relying on them.
+- `tr_transcriber.py` needs `compressWav: false`: it reads the WAVs directly, because faster-whisper's `decode_audio` (PyAV) is broken in this venv.
+- Splitting a call into transmissions relies on Whisper word timestamps, so a word at a key-up boundary sometimes lands on the neighbouring RID. Back-to-back transmissions from the same radio are merged.
+- Talkgroup priority: a talkgroup with priority N is recorded only when at least N digital recorders are idle on its source ("Not recording talkgroup. Priority is 5 but only 4 recorders are available."). With no Priority column every talkgroup gets 1. `digitalRecorders` (7 and 9) is one per site channel in each source's window; keep it in step if the centers change.
+- Talkgroup IDs come from RadioReference. Confirm new ones against live traffic (`logs/trunk-recorder/trunk-recorder.log`) before relying on them.
 
 ## Environment constraints and gotchas
 
 - **No sudo during agent sessions.** System packages were installed by the user.
 - **Python packages go in `venv/`, never apt.** This is the user's preference. Use `./venv/bin/pip`.
-- **brotli:** the venv pins `brotli>=1.2`, which shadows the system brotli 1.1. The old version crashes Hugging Face model downloads (`process() takes no keyword arguments`). Don't remove it.
+- **brotli:** the venv pins `brotli>=1.2`, which shadows the system brotli 1.1. Don't remove it.
 - **No GPU acceleration.** The GPU is an AMD integrated one, so Whisper runs on the CPU (24 cores; the transcriber uses half by default). Whisper pads every clip to 30 s, so each call costs about 3–4 s with large-v3 no matter how long it is. Smaller models aren't much faster. large-v3-turbo was observed to fall into repetition loops.
-- **The SDRs are remote and shared.** Two R820T dongles run rtl_tcp on `192.168.8.132`, ports 1234 and 1235. Each port accepts only one client at a time, so stop the scanner (`docker stop trunk-recorder`) before running any other test against the SDRs.
+- **The SDRs are remote and shared.** Each rtl_tcp port accepts only one client at a time, so stop the scanner (`docker stop trunk-recorder`) before running any other test against the SDRs.
 
 ## Making changes
 
-- **Change what gets recorded:** edit `config/whitelist.tsv` and restart. Give new talkgroups names in `config/talkgroups.tsv`.
-- **Change the SDRs / tune reception:** in `config/scanner.conf`, set `SDR_HOST`/`SDR_PORT` (or `SDR_ARGS`), `SDR_GAINS` (currently `LNA:40`) and `SDR_PPM` (currently −4), and the `SDR2_*` equivalents. Don't edit these in the JSON; they get overwritten at launch. Window centers, sample rates and `digitalRecorders` are in `config/trunk-recorder.json`. Local USB dongles (`rtl=0`) aren't set up: the container has no USB passthrough.
-- **Tune transcription:** edit `DEFAULT_PROMPT` (local vocabulary), `HALLUCINATIONS` and `clean_text()` in `tr_transcriber.py`. Measure every change against the test set: `./venv/bin/python testset.py score --drafts` for the live baseline, then e.g. `testset.py score --set vad_filter=False --name no-vad`. Scoring normalizes case, punctuation and number formats ("10-8" = "ten eight"), and `transcribe()` passes extra keyword arguments straight to faster-whisper.
-- **What the test set showed** (2026-11-08, 187 clips, large-v3, call mode unless noted; `testset.py compare` reproduces it):
-  - Current settings: 10.7% WER. Most errors are in transmissions under 2 s (25%; 12% at 2–5 s, 6% above).
-  - Transcribing whole calls beats one transmission at a time: 10.7% vs 17.0%, and 25% vs 42% on clips under 2 s.
-  - `DEFAULT_PROMPT` is worth 6 points (no prompt: 17.1%). Removing its place-name list: 13.9%. Example-sentence prompts per agency: 13.3%. The same list-style prompt adapted per agency: 11.1% (HCSO worse, the other groups too small to tell).
-  - Adding the last lines heard on the talkgroup to the prompt (`--context`) hurts: 13.5% (2 lines, call mode), 18.0% (3 lines, clip mode). It stays off.
+- **Tune transcription:** edit `DEFAULT_PROMPT` (local vocabulary), `HALLUCINATIONS` and `clean_text()` in `tr_transcriber.py`. Measure every change against the test set: `./venv/bin/python testset.py score --drafts` for the live baseline, then e.g. `testset.py score --set vad_filter=False --name no-vad`. `transcribe()` passes extra keyword arguments straight to faster-whisper.
+- **Detailed test set results** (2026-11-08, 187 clips, large-v3, call mode unless noted; `testset.py compare` reproduces them; the README has the summary):
+  - Current settings: 10.7% WER. Under 2 s: 25%; 2–5 s: 12%; above: 6%.
+  - Call mode vs clip mode: 10.7% vs 17.0%, and 25% vs 42% on clips under 2 s.
+  - No prompt: 17.1%. Removing `DEFAULT_PROMPT`'s place-name list: 13.9%. Example-sentence prompts per agency: 13.3%. The same list-style prompt adapted per agency: 11.1% (HCSO worse, the other groups too small to tell).
+  - `--context`: 13.5% (2 lines, call mode), 18.0% (3 lines, clip mode). It stays off.
   - VAD off: 13.4%. VAD threshold 0.35: 12.1%. `no_speech_threshold=None`: identical output. Keep the current VAD settings.
-- **Testing:** there are no automated tests. Verify with a timed live run, e.g. `timeout 120 ./trunk-recorder.sh`, then check `logs/trunk-recorder/transcripts.jsonl` (the `proc_s` field shows transcription time) and `transcriber.log` (`backlog` warnings mean Whisper can't keep up). `testset.py score --drafts` is a quick check that the Whisper helpers still import.
-- **Git:** the repo tracks only the project's own files (`AGENTS.md`, the scripts, `config/`, `testset/`). `.gitignore` excludes `venv/`, `logs/` and `__pycache__/`; don't commit them.
+- **Testing:** there are no automated tests. Verify with a timed live run, e.g. `timeout 120 ./trunk-recorder.sh`, then check `logs/trunk-recorder/transcripts.jsonl` (`proc_s` is transcription time) and `transcriber.log` (`backlog` warnings). `testset.py score --drafts` is a quick check that the Whisper helpers still import.
+- **Docs:** user-facing changes (settings, commands, talkgroups, results) go in `README.md`; implementation details go here.
+- **Git:** the repo tracks only the project's own files (`README.md`, `AGENTS.md`, the scripts, `config/`, `testset/`). `.gitignore` excludes `venv/`, `logs/` and `__pycache__/`; don't commit them.
