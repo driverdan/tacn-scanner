@@ -9,12 +9,16 @@ using word timestamps, so each line carries the radio ID that spoke it.
 
 Output is one record per transmission, written to <outdir>/transcripts.{txt,jsonl}.
 Calls already in transcripts.jsonl are never redone.
+
+Runs as the `transcriber` service in compose.yaml (see Dockerfile), or directly from the venv.
+SIGTERM/SIGINT finish the call in progress and exit 0.
 """
 import argparse
 import datetime as dt
 import json
 import os
 import re
+import signal
 import sys
 import time
 import wave
@@ -24,7 +28,11 @@ import numpy as np
 from scipy.signal import resample_poly
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+# The image sets these to its mount points; from a checkout they default to the repo's own dirs.
+CONFIG_DIR = os.environ.get("SCANNER_CONFIG_DIR") or os.path.join(ROOT, "config")
+DATA_DIR = os.environ.get("SCANNER_DATA_DIR") or os.path.join(ROOT, "logs", "trunk-recorder")
 PENDING_TIMEOUT = 120  # seconds a new call may wait for its WAV
+HEALTH_MAX_AGE = 120   # seconds without a heartbeat before --healthcheck fails (one call takes far less)
 
 # Vocabulary hint for Whisper (biases spelling of local names/jargon).
 DEFAULT_PROMPT = (
@@ -103,7 +111,7 @@ class TalkgroupColors:
                135, 171, 201, 205, 210, 223, 229, 157, 123, 117, 147, 219]
     STEP = 7  # coprime with len(PALETTE): visits every color before repeating
 
-    def __init__(self, whitelist=os.path.join(ROOT, "config", "whitelist.tsv")):
+    def __init__(self, whitelist=os.path.join(CONFIG_DIR, "whitelist.tsv")):
         self.order = {}
         try:
             with open(whitelist) as f:
@@ -134,7 +142,7 @@ def use_color(mode):
     return sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
 
 
-PROMPTS_FILE = os.path.join(ROOT, "config", "prompts.json")
+PROMPTS_FILE = os.path.join(CONFIG_DIR, "prompts.json")
 CONTEXT_CHARS = 400  # cap on recent-line context; Whisper keeps only the last ~223 prompt tokens
 
 
@@ -234,7 +242,7 @@ class CallScanner:
             try:
                 mtime = os.stat(d).st_mtime_ns
                 entries = list(os.scandir(d))
-            except FileNotFoundError:
+            except OSError:  # removed since it was listed, or unreadable
                 continue
             changed = self.dir_mtimes.get(d) != mtime
             self.dir_mtimes[d] = mtime
@@ -292,65 +300,73 @@ def _transmissions(call):
     return [(0.0, None, None, call.get("freq"), None)]
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--media-dir", default=os.path.join(ROOT, "logs", "trunk-recorder", "media"),
-                    help="trunk-recorder captureDir")
-    ap.add_argument("--outdir", default=os.path.join(ROOT, "logs", "trunk-recorder"))
-    ap.add_argument("--backfill", action="store_true",
-                    help="also transcribe calls recorded before startup (oldest first; new calls jump the queue)")
-    ap.add_argument("--once", action="store_true", help="transcribe all pending calls, then exit (implies --backfill)")
-    ap.add_argument("--interval", type=float, default=1.0, help="seconds between scans for new calls")
-    ap.add_argument("--model", default=os.environ.get("WHISPER_MODEL", "large-v3"))
-    ap.add_argument("--compute-type", default="int8")
-    ap.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 4) // 2))
-    ap.add_argument("--beam-size", type=int, default=5)
-    ap.add_argument("--min-dur", type=float, default=0.6, help="skip calls shorter than this (seconds)")
-    ap.add_argument("--prompt", help="one initial prompt for every talkgroup (default: per talkgroup from --prompts)")
-    ap.add_argument("--prompts", default=PROMPTS_FILE,
-                    help="per-talkgroup prompts (JSON, re-read when it changes; DEFAULT_PROMPT if missing)")
-    ap.add_argument("--context", type=int, default=0, metavar="N",
-                    help="append the last N lines heard on the same talkgroup to the prompt")
-    ap.add_argument("--context-window", type=float, default=300.0, metavar="SEC",
-                    help="only use context lines from the last SEC seconds")
-    ap.add_argument("--color", choices=["auto", "always", "never"], default="auto",
-                    help="color console lines by talkgroup (auto: when stdout is a terminal and NO_COLOR is unset)")
-    args = ap.parse_args()
-    colors = TalkgroupColors() if use_color(args.color) else None
-    if args.once:
-        args.backfill = True
+def mtime_of(path):
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return 0.0
 
-    os.makedirs(args.outdir, exist_ok=True)
-    os.makedirs(args.media_dir, exist_ok=True)
-    jsonl_path = os.path.join(args.outdir, "transcripts.jsonl")
-    txt_path = os.path.join(args.outdir, "transcripts.txt")
 
-    done = set()
-    if os.path.exists(jsonl_path):
-        with open(jsonl_path) as f:
-            for line in f:
-                try:
-                    done.add(json.loads(line).get("call"))
-                except json.JSONDecodeError:
-                    pass
+class Transcriber:
+    """Watches a trunk-recorder media dir and appends each finished call's transmissions to
+    <outdir>/transcripts.{txt,jsonl}. Calls already in transcripts.jsonl are skipped."""
 
-    def rel(path):
-        return os.path.relpath(path, args.media_dir)
+    def __init__(self, args):
+        self.args = args
+        self.jsonl_path = os.path.join(args.outdir, "transcripts.jsonl")
+        self.txt_path = os.path.join(args.outdir, "transcripts.txt")
+        self.colors = TalkgroupColors() if use_color(args.color) else None
+        self.prompts = Prompts(None if args.prompt is not None else args.prompts, args.context, args.context_window)
+        if args.prompt is not None:
+            self.prompts.default = args.prompt
+        self.scanner = CallScanner(args.media_dir)
+        self.done = self._load_done()
+        # trunk-recorder writes the call JSON first, then copies the WAV in from its temp dir, so a new
+        # call waits in `pending` until its WAV exists and has stopped changing.
+        self.pending = {}     # call JSON -> time first seen
+        self.retry_at = {}    # call JSON -> earliest time to try a half-written WAV again
+        self.backlog = []     # calls from before startup, newest first (popped oldest first)
+        self.model = None
+        self.stopping = False
+        self.last_beat = 0.0
 
-    scanner = CallScanner(args.media_dir)
-    existing = [p for p in scanner.scan() if rel(p) not in done]
-    backlog = sorted(existing, key=os.path.getmtime, reverse=True) if args.backfill else []
-    log(f"watching {args.media_dir}: {len(existing)} untranscribed calls already there"
-        + (" (transcribing them oldest first; new calls jump the queue)" if args.backfill else " (skipped; --backfill to include)"))
+    def _load_done(self):
+        done = set()
+        try:
+            with open(self.jsonl_path) as f:
+                for line in f:
+                    try:
+                        done.add(json.loads(line).get("call"))
+                    except (json.JSONDecodeError, AttributeError):
+                        pass  # e.g. a line cut short by a crash
+        except FileNotFoundError:
+            pass
+        return done
 
-    prompts = Prompts(None if args.prompt is not None else args.prompts, args.context, args.context_window)
-    if args.prompt is not None:
-        prompts.default = args.prompt
-    model = load_model(args.model, args.compute_type, args.threads)
+    def rel(self, path):
+        return os.path.relpath(path, self.args.media_dir)
 
-    def process(path):
-        key = rel(path)
-        if key in done:
+    def stop(self, signum=None, _frame=None):
+        if not self.stopping:
+            log(f"{signal.Signals(signum).name if signum else 'stop'} received: finishing the current call, then exiting")
+        self.stopping = True
+
+    def heartbeat(self, now):
+        """Touch the health file (at most every 5 s) so `--healthcheck` can tell the loop is alive."""
+        if not self.args.health_file or now - self.last_beat < 5:
+            return
+        self.last_beat = now
+        try:
+            with open(self.args.health_file, "w"):
+                pass
+        except OSError as e:
+            log(f"warning: can't write health file {self.args.health_file}: {e}")
+            self.args.health_file = None
+
+    def process(self, path):
+        """Transcribe one call. Returns False if its WAV isn't complete yet (try again later)."""
+        args, key = self.args, self.rel(path)
+        if key in self.done:
             return
         try:
             call = load_call(path)
@@ -375,76 +391,145 @@ def main():
         dur = len(audio) / 16000
         texts = [""] * len(txs)
         if dur >= args.min_dur:
-            segments = transcribe(model, audio, prompts.build(tg, t_call), args.beam_size, word_timestamps=True)
+            segments = transcribe(self.model, audio, self.prompts.build(tg, t_call), args.beam_size,
+                                  word_timestamps=True)
             texts = split_words(segments, txs)
         proc = time.time() - started
 
         label = tag or f"TG {tg}"
+        wav_rel = os.path.relpath(audio_path, args.outdir)
         recs, lines, shown = [], [], []
         for i, ((pos, length, rid, freq, errs), text) in enumerate(zip(txs, texts)):
             if length is None:
                 nxt = txs[i + 1][0] if i + 1 < len(txs) else dur
                 length = max(0.0, nxt - pos)
             ts = dt.datetime.fromtimestamp(t_call + pos)
-            prompts.remember(tg, t_call + pos, text)
+            self.prompts.remember(tg, t_call + pos, text)
             recs.append({
                 "time": ts.isoformat(timespec="seconds"), "duration": round(length, 2),
                 "tgid": tg, "tag": tag, "rid": rid, "freq": freq, "slot": call.get("tdma_slot", 0),
                 "text": text, "model": args.model, "proc_s": round(proc, 2),
-                "error_count": errs, "call": key, "wav": audio_path,
+                "error_count": errs, "call": key, "wav": wav_rel,
             })
             if text:
                 header = (f"[{ts:%H:%M:%S}] {label}" + (f" ({tg})" if tag else "")
                           + (f" RID {rid}" if rid else "") + ":")
                 lines.append(f"{header} {text}")
-                shown.append(colors.paint(tg, header, text) if colors else lines[-1])
-        with open(jsonl_path, "a") as f:
-            for r in recs:
-                f.write(json.dumps(r) + "\n")
+                shown.append(self.colors.paint(tg, header, text) if self.colors else lines[-1])
+        # One write per file, so a kill mid-call can't leave half of a call's records behind.
+        with open(self.jsonl_path, "a") as f:
+            f.write("".join(json.dumps(r) + "\n" for r in recs))
         if lines:
-            with open(txt_path, "a") as f:
+            with open(self.txt_path, "a") as f:
                 f.write("\n".join(lines) + "\n")
             print("\n".join(shown), flush=True)
-        done.add(key)
-        if len(pending) > 3:
-            log(f"warning: transcription backlog {len(pending)} calls (last {dur:.1f}s call took {proc:.1f}s)")
+        self.done.add(key)
+        if len(self.pending) > 3:
+            log(f"warning: transcription backlog {len(self.pending)} calls (last {dur:.1f}s call took {proc:.1f}s)")
 
-    # trunk-recorder writes the call JSON first, then copies the WAV in from its temp dir, so a new
-    # call waits in `pending` until its WAV exists and has stopped changing.
-    pending = {}  # call JSON -> time first seen
-    last_scan = 0.0
-    while True:
-        now = time.time()
-        if not args.once and now - last_scan >= args.interval:
-            last_scan = now
-            for p in scanner.scan():
-                if rel(p) not in done:
-                    pending.setdefault(p, now)
-        path = next((p for p in sorted(pending, key=pending.get) if wav_settled(p)), None)
+    def next_call(self, now):
+        """(path, time first seen) of the next call to transcribe: live calls first (oldest first),
+        then the startup backlog. (None, None) if nothing is ready."""
+        ready = (p for p in sorted(self.pending, key=self.pending.get)
+                 if self.retry_at.get(p, 0) <= now and wav_settled(p))
+        path = next(ready, None)
         if path:
-            seen_at = pending.pop(path)
-        else:
-            for p, t in list(pending.items()):
-                if now - t > PENDING_TIMEOUT:
-                    log(f"warning: skipping {rel(p)}: no complete .wav after {PENDING_TIMEOUT}s")
-                    del pending[p]
-            if backlog:
-                path, seen_at = backlog.pop(), None  # oldest first; live calls go ahead of these
-            elif args.once:
-                break
-            else:
+            self.retry_at.pop(path, None)
+            return path, self.pending.pop(path)
+        for p, t in list(self.pending.items()):
+            if now - t > PENDING_TIMEOUT:
+                log(f"warning: skipping {self.rel(p)}: no complete .wav after {PENDING_TIMEOUT}s")
+                del self.pending[p]
+                self.retry_at.pop(p, None)
+        if self.backlog:
+            return self.backlog.pop(), None
+        return None, None
+
+    def run(self):
+        args = self.args
+        existing = [p for p in self.scanner.scan() if self.rel(p) not in self.done]
+        if args.backfill:
+            self.backlog = sorted(existing, key=mtime_of, reverse=True)
+        log(f"watching {args.media_dir}: {len(existing)} untranscribed calls already there"
+            + (" (transcribing them oldest first; new calls jump the queue)" if args.backfill
+               else " (skipped; --backfill to include)"))
+        self.model = load_model(args.model, args.compute_type, args.threads)
+
+        last_scan = 0.0
+        while not self.stopping:
+            now = time.time()
+            self.heartbeat(now)
+            if not args.once and now - last_scan >= args.interval:
+                last_scan = now
+                for p in self.scanner.scan():
+                    if self.rel(p) not in self.done:
+                        self.pending.setdefault(p, now)
+            path, seen_at = self.next_call(now)
+            if path is None:
+                if args.once and not self.pending:
+                    break
                 time.sleep(0.25)
                 continue
-        try:
-            if process(path) is False and seen_at is not None:
-                pending[path] = seen_at
-        except Exception as e:  # keep watching even if one call's audio is bad
-            log(f"error: {rel(path)}: {e!r}")
-    log(f"done: {len(done)} calls in {jsonl_path}")
+            try:
+                if self.process(path) is False:
+                    if seen_at is None:
+                        log(f"warning: skipping {self.rel(path)}: incomplete .wav")
+                    else:  # look again shortly; next_call() gives up after PENDING_TIMEOUT
+                        self.pending[path] = seen_at
+                        self.retry_at[path] = time.time() + 2
+            except Exception as e:  # keep watching even if one call's audio is bad
+                log(f"error: {self.rel(path)}: {e!r}")
+        log(f"stopped: {len(self.done)} calls in {self.jsonl_path}")
+
+
+def healthcheck(path):
+    """Exit status for Docker's HEALTHCHECK: 0 if the main loop touched `path` recently."""
+    try:
+        age = time.time() - os.stat(path).st_mtime
+    except (OSError, TypeError):
+        return 1
+    return 0 if age < HEALTH_MAX_AGE else 1
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--media-dir", default=os.path.join(DATA_DIR, "media"), help="trunk-recorder captureDir")
+    ap.add_argument("--outdir", default=DATA_DIR)
+    ap.add_argument("--backfill", action="store_true",
+                    help="also transcribe calls recorded before startup (oldest first; new calls jump the queue)")
+    ap.add_argument("--once", action="store_true", help="transcribe all pending calls, then exit (implies --backfill)")
+    ap.add_argument("--interval", type=float, default=1.0, help="seconds between scans for new calls")
+    ap.add_argument("--model", default=os.environ.get("WHISPER_MODEL") or "large-v3")
+    ap.add_argument("--compute-type", default="int8")
+    ap.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 4) // 2))
+    ap.add_argument("--beam-size", type=int, default=5)
+    ap.add_argument("--min-dur", type=float, default=0.6, help="skip calls shorter than this (seconds)")
+    ap.add_argument("--prompt", help="one initial prompt for every talkgroup (default: per talkgroup from --prompts)")
+    ap.add_argument("--prompts", default=PROMPTS_FILE,
+                    help="per-talkgroup prompts (JSON, re-read when it changes; DEFAULT_PROMPT if missing)")
+    ap.add_argument("--context", type=int, default=0, metavar="N",
+                    help="append the last N lines heard on the same talkgroup to the prompt")
+    ap.add_argument("--context-window", type=float, default=300.0, metavar="SEC",
+                    help="only use context lines from the last SEC seconds")
+    ap.add_argument("--color", choices=["auto", "always", "never"], default="auto",
+                    help="color console lines by talkgroup (auto: when stdout is a terminal and NO_COLOR is unset)")
+    ap.add_argument("--health-file", default=os.environ.get("SCANNER_HEALTH_FILE"), metavar="FILE",
+                    help="touch FILE every few seconds while running (default: $SCANNER_HEALTH_FILE, else off)")
+    ap.add_argument("--healthcheck", action="store_true",
+                    help=f"exit 0 if the health file was touched in the last {HEALTH_MAX_AGE}s, else 1")
+    args = ap.parse_args()
+    if args.healthcheck:
+        sys.exit(healthcheck(args.health_file))
+    if args.once:
+        args.backfill = True
+
+    os.makedirs(args.outdir, exist_ok=True)
+    os.makedirs(args.media_dir, exist_ok=True)
+    transcriber = Transcriber(args)
+    signal.signal(signal.SIGTERM, transcriber.stop)
+    signal.signal(signal.SIGINT, transcriber.stop)
+    transcriber.run()
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
+    main()

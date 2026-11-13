@@ -1,0 +1,4 @@
+# The image needs only these; everything else (logs/ is gigabytes) stays out of the build context.
+*
+!requirements.txt
+!tr_transcriber.py

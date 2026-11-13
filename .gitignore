@@ -6,6 +6,9 @@ venv/
 # Runtime output: logs, transcripts, rendered trunk-recorder config, recorded calls
 logs/
 
+# Local Compose overrides (SCANNER_UID, TR_IMAGE)
+.env
+
 # Editor / OS
 .vscode/
 .idea/

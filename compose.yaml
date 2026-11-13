@@ -1,0 +1,70 @@
+# The scanner's containers. Needs Docker Compose v2 (`docker compose`).
+#
+#   docker compose up -d --build        start (or update) everything
+#   docker compose logs -f transcriber  follow the transcripts
+#   docker compose down                 stop everything
+#
+# The two long-running services share only the run directory (logs/trunk-recorder/):
+#   trunk-recorder  records calls into media/
+#   transcriber     watches media/ and writes transcripts.{txt,jsonl}
+# Either can be stopped, restarted or rebuilt without the other. The transcriber catches up on
+# calls recorded while it was down.
+#
+# Settings: config/scanner.conf. Containers run as SCANNER_UID:SCANNER_GID (default 1000:1000);
+# export those (or put them in .env) if your user isn't 1000. Restart a service after editing config/.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 20m
+    max-file: "5"
+
+services:
+  # One-shot: renders config.json and talkgroups.csv from config/ into the run directory and
+  # prints the SDR coverage check (`docker compose logs trunk-recorder-config`).
+  trunk-recorder-config:
+    image: python:3.12-slim
+    user: "${SCANNER_UID:-1000}:${SCANNER_GID:-1000}"
+    env_file: config/scanner.conf
+    environment:
+      SCANNER_CONFIG_DIR: /config
+      SCANNER_DATA_DIR: /data
+    volumes:
+      - ./render_config.py:/render_config.py:ro
+      - ./config:/config:ro
+      - ./logs/trunk-recorder:/data
+    command: ["python", "/render_config.py"]
+    restart: "no"
+    logging: *logging
+
+  trunk-recorder:
+    image: ${TR_IMAGE:-robotastic/trunk-recorder:5.2.1}
+    container_name: trunk-recorder
+    depends_on:
+      trunk-recorder-config:
+        condition: service_completed_successfully
+    user: "${SCANNER_UID:-1000}:${SCANNER_GID:-1000}"
+    init: true
+    working_dir: /app
+    volumes:
+      - ./logs/trunk-recorder:/app
+    command: ["trunk-recorder", "--config=/app/config.json"]
+    restart: unless-stopped
+    logging: *logging
+
+  transcriber:
+    build: .
+    image: scanner-transcriber
+    container_name: transcriber
+    user: "${SCANNER_UID:-1000}:${SCANNER_GID:-1000}"
+    init: true
+    env_file: config/scanner.conf    # WHISPER_MODEL
+    volumes:
+      - ./logs/trunk-recorder:/data
+      - ./config:/config:ro
+      - ${HOME}/.cache/huggingface:/models    # the host's Hugging Face cache: no second model download
+      - /etc/localtime:/etc/localtime:ro      # transcript times in the host's timezone
+    command: ["--backfill", "--color", "always"]
+    restart: unless-stopped
+    stop_grace_period: 2m    # SIGTERM lets the call in progress finish
+    logging: *logging

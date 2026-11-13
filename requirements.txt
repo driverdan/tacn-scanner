@@ -1,0 +1,10 @@
+# The transcriber's pip packages, pinned to the versions the test set results were measured with.
+# numpy (1.26.4) and scipy (1.11.4) are deliberately not here: they come from Ubuntu 24.04's
+# python3-numpy and python3-scipy packages, in the image and in the host venv alike (see Dockerfile).
+faster-whisper==1.2.1
+ctranslate2==4.8.5
+# Dependencies of faster-whisper, pinned too (onnxruntime runs the VAD).
+onnxruntime==1.31.1
+tokenizers==0.23.3
+av==19.0.2
+huggingface_hub==2.4.0
