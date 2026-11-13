@@ -7,8 +7,8 @@ Nothing plays live. Calls are recorded and transcribed, and the transcripts appe
 ## How it works
 
 ```
-2 × RTL-SDR (R820T) ── rtl_tcp 192.168.8.132:1234 and :1235
-        │  IQ samples over TCP
+2 × RTL-SDR (R820T) ── rtl_tcp 192.168.8.132:1234 and :1235, or plugged in over USB
+        │  IQ samples over TCP or USB
         ▼
 trunk-recorder  (container, robotastic/trunk-recorder:5.2.1)
   • follows the control channel, records every whitelisted call inside its two SDR windows
@@ -27,14 +27,14 @@ Each call is transcribed in one pass with word timestamps, then split back into 
 
 ## Requirements
 
-- **Two RTL-SDR dongles** served over the network with `rtl_tcp` (one per port). The site's channels span about 4.05 MHz, more than one RTL-SDR can see, so it takes two. One dongle works but covers only 7 of the 16 channels.
+- **Two RTL-SDR dongles**, each either served over the network with `rtl_tcp` (one per port) or plugged into this machine (see [USB dongles](#usb-dongles)). The site's channels span about 4.05 MHz, more than one RTL-SDR can see, so it takes two. One dongle works but covers only 7 of the 16 channels.
 - **Docker with Compose v2** (`docker compose version` must work; the old `docker-compose` 1.x doesn't work with current Docker). Your user must be in the `docker` group.
 - **A reasonably fast CPU.** Whisper runs on the CPU and takes about 3–4 s per call with large-v3, however short the call is.
 - For `testset.py` only: Python 3 with a venv (see [Measuring transcription accuracy](#measuring-transcription-accuracy)), and for `testset.py label` an audio player (`paplay`, `pw-play`, `aplay` or `ffplay`).
 
 ## Setup
 
-1. Set your SDRs' addresses in `config/scanner.conf` (see [Configuration](#configuration)).
+1. Set your SDRs' addresses in `config/scanner.conf` (see [Configuration](#configuration)). For dongles plugged into this machine, follow [USB dongles](#usb-dongles).
 2. Create the directories the containers write to, so that they belong to you and not to root: `mkdir -p logs/trunk-recorder ~/.cache/huggingface`
 3. If your user ID isn't 1000 (`id -u`), put `SCANNER_UID=…` and `SCANNER_GID=…` in a `.env` file next to `compose.yaml`. The containers run as that user.
 
@@ -87,17 +87,46 @@ Encrypted calls are not recorded or transcribed.
 | `config/trunk-recorder.json` | trunk-recorder's config template: the SDR window centers, sample rates and recorder counts. Don't set device, gain or ppm here; they are filled in from `scanner.conf`. |
 | `config/prompts.json` | Optional per-talkgroup Whisper prompts (`{"default": "...", "groups": [{"name": ..., "tgids": [...], "prompt": "..."}]}`). Not present by default: per-agency prompts tested worse than the built-in one. |
 | `compose.yaml` | The containers. `TR_IMAGE` (environment or `.env`) picks another trunk-recorder image. |
+| `compose.usb.yaml` | Adds USB passthrough to trunk-recorder, for [USB dongles](#usb-dongles). |
 
 **To record more or fewer talkgroups**, edit `config/whitelist.tsv`, name any new ones in `config/talkgroups.tsv`, and run `docker compose restart trunk-recorder`.
 
-**SDR windows.** Port 1234 (`SDR_*`) is centered on 855.3125 MHz and covers 854.3875–856.2375, including the primary control channel. Port 1235 (`SDR2_*`) is centered on 857.6 MHz and covers 856.7625–858.4375. trunk-recorder records only channels inside these windows. If you move the centers, keep each source's `digitalRecorders` equal to the number of site channels in its window (currently 7 and 9).
+**SDR windows.** The first SDR (`SDR_*`, port 1234) is centered on 855.3125 MHz and covers 854.3875–856.2375, including the primary control channel. The second (`SDR2_*`, port 1235) is centered on 857.6 MHz and covers 856.7625–858.4375. trunk-recorder records only channels inside these windows. If you move the centers, keep each source's `digitalRecorders` equal to the number of site channels in its window (currently 7 and 9).
 
-**Local USB dongles** (`rtl=0`) aren't supported as set up: the container has no USB passthrough. Use `rtl_tcp`.
+### USB dongles
+
+A dongle plugged into this machine is used directly, without `rtl_tcp`. The two SDRs are set separately, so one can be USB and the other remote.
+
+1. Install the RTL-SDR udev rules on the host, so that the dongles belong to the `plugdev` group and the kernel's DVB-T driver leaves them alone. On Debian and Ubuntu: `sudo apt install rtl-sdr`, then replug the dongles. `ls -l /dev/bus/usb/*/` should show them as `root plugdev`.
+2. In `config/scanner.conf`, set the device strings:
+
+   ```
+   SDR_ARGS=rtl=0
+   SDR2_ARGS=rtl=1
+   ```
+
+   The number is the device index, in the order `rtl_test` lists the dongles. That order can change when they are replugged, which would swap the two windows. To pin them, use serial numbers (`SDR_ARGS=rtl=00000101`). Most dongles ship with the same serial, `00000001`; give each its own with `rtl_eeprom -d 0 -s 00000101` and replug it.
+3. Add `compose.usb.yaml`, which passes the USB devices into the trunk-recorder container. Put this in `.env` next to `compose.yaml`:
+
+   ```
+   COMPOSE_FILE=compose.yaml:compose.usb.yaml
+   ```
+
+   Every `docker compose` command then includes it. Without `.env`, pass `-f compose.yaml -f compose.usb.yaml` each time.
+4. `docker compose up -d`, then check `docker compose logs trunk-recorder`.
+
+If trunk-recorder can't open a dongle:
+
+- `usb_open error -3`: the container may not write to the device. Check step 1. If your host's group for SDRs isn't gid 46 (`getent group plugdev`), set `SDR_USB_GID=…` in `.env`.
+- `usb_claim_interface error -6`: the kernel's DVB-T driver holds the dongle. `sudo rmmod dvb_usb_rtl28xxu`, and blacklist it to make that permanent (`echo blacklist dvb_usb_rtl28xxu | sudo tee /etc/modprobe.d/blacklist-rtl.conf`).
+- Only one program can use a dongle at a time: stop `rtl_tcp`, `rtl_test` and other SDR software first.
+
+Gain and ppm work as they do over `rtl_tcp`. This has been tested as far as the container reaching the host's USB devices, not with a dongle attached: the dongles here are remote.
 
 ### Tuning reception
 
-- trunk-recorder logs `Requested Gain of 40.2 not supported, driver using: 0`. It's harmless: gr-osmosdr's rtl_tcp driver always reports 0, but the gain is applied.
-- Uncorrected, both dongles read low by about 3.3 and 3.7 kHz (−3.9 and −4.3 ppm), so `SDR_PPM` and `SDR2_PPM` are −4. rtl_tcp takes whole ppm only, and trunk-recorder's `autoTune` corrects the remainder. If it starts warning that the AutoTune offset exceeds 3.5 ppm, take the `AutoTune:` values from `docker compose logs trunk-recorder` and add Hz ÷ center MHz to the ppm. The sign matters: the wrong sign doubles the error and the control channel barely decodes.
+- trunk-recorder logs `Requested Gain of 40.2 not supported, driver using: 0`. It's harmless: gr-osmosdr's rtl_tcp driver always reports 0, but the gain is applied. (USB dongles report the real gain.)
+- Uncorrected, both dongles read low by about 3.3 and 3.7 kHz (−3.9 and −4.3 ppm), so `SDR_PPM` and `SDR2_PPM` are −4. RTL-SDRs take whole ppm only, and trunk-recorder's `autoTune` corrects the remainder. If it starts warning that the AutoTune offset exceeds 3.5 ppm, take the `AutoTune:` values from `docker compose logs trunk-recorder` and add Hz ÷ center MHz to the ppm. The sign matters: the wrong sign doubles the error and the control channel barely decodes.
 - Each call JSON's `freq_error` and `freqList[].error_count` show tuning and decode quality.
 - Every talkgroup gets the default priority 1, so it can always be recorded as long as a recorder is free.
 

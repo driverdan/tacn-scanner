@@ -1,0 +1,24 @@
+# Adds USB passthrough, for SDRs plugged into this machine (SDR_ARGS=rtl=... in config/scanner.conf).
+# Not needed for rtl_tcp. Use it together with compose.yaml:
+#
+#   docker compose -f compose.yaml -f compose.usb.yaml up -d --build
+#
+# or put this line in .env so that plain `docker compose` always includes it:
+#
+#   COMPOSE_FILE=compose.yaml:compose.usb.yaml
+
+services:
+  trunk-recorder-config:
+    environment:
+      SDR_USB: "1"    # tells render_config.py that local device strings will work
+
+  trunk-recorder:
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+    # Every USB device node (char major 189). A rule and a bind mount, where `devices:` would fix
+    # the list when the container is created: a replugged dongle gets a new node.
+    device_cgroup_rules:
+      - "c 189:* rwm"
+    # The group the host's udev rules give SDRs to (rtl-sdr's rules: plugdev, gid 46 on Debian/Ubuntu).
+    group_add:
+      - "${SDR_USB_GID:-46}"

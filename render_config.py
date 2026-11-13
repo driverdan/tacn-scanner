@@ -6,6 +6,8 @@ starts. The SDR settings come from the environment (config/scanner.conf via env_
   SDR_*   first dongle  -> low half of the site,  854.3875-856.2375 (incl. primary CC 855.2125)
   SDR2_*  second dongle -> high half of the site, 856.7625-858.4375
 Leave SDR2_PORT and SDR2_ARGS empty to run on the first dongle alone (partial coverage).
+Each dongle is either remote (rtl_tcp, from SDR_HOST/SDR_PORT) or plugged into this machine
+(SDR_ARGS=rtl=<index or serial>, which needs compose.usb.yaml for the USB passthrough).
 Window centers and rates live in config/trunk-recorder.json. Standard library only.
 """
 import csv
@@ -23,6 +25,9 @@ RUN_DIR = os.environ.get("SCANNER_DATA_DIR") or os.path.join(ROOT, "logs", "trun
 # gr-osmosdr's rtl_tcp get_gain() always returns 0. The gain is sent after manual mode and applies.
 R820T_GAINS = [0, 0.9, 1.4, 2.7, 3.7, 7.7, 8.7, 12.5, 14.4, 15.7, 16.6, 19.7, 20.7, 22.9, 25.4, 28,
                29.7, 32.8, 33.8, 36.4, 37.2, 38.6, 40.2, 42.1, 43.4, 43.9, 44.5, 48, 49.6]
+
+# osmosdr device strings for hardware attached to this machine (as opposed to rtl_tcp=host:port).
+LOCAL_DEVICE = re.compile(r"(rtl|airspy|airspyhf|hackrf|bladerf|miri)(=|,|$)")
 
 # The Chattanooga Simulcast site's 16 channels (RadioReference sid 6355), for the coverage check.
 SITE = [854.3875, 854.9125, 855.1875, 855.2125, 855.9875, 856.0875, 856.2375, 856.7625,
@@ -52,9 +57,14 @@ def devices():
     if args2:
         devs.append((args2, setting("SDR2_GAINS", gains), setting("SDR2_PPM", ppm)))
 
-    for a, _, _ in devs:
-        if a.startswith("rtl="):
-            sys.exit("Local dongles need USB passed into the container (devices: /dev/bus/usb); not set up here.")
+    # compose.usb.yaml sets SDR_USB. Without its passthrough trunk-recorder would only find no device.
+    usb = [a for a, _, _ in devs if LOCAL_DEVICE.match(a)]
+    if usb and not setting("SDR_USB"):
+        sys.exit(f"{', '.join(usb)}: a USB SDR needs compose.usb.yaml for the USB passthrough. Run\n"
+                 "  docker compose -f compose.yaml -f compose.usb.yaml up -d\n"
+                 "or put COMPOSE_FILE=compose.yaml:compose.usb.yaml in .env")
+    if len(usb) == 2 and usb[0] == usb[1]:
+        sys.exit(f"Both SDRs are set to {usb[0]}: give each its own index or serial")
     return devs
 
 
