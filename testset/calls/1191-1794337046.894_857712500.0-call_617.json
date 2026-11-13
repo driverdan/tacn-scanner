@@ -1,0 +1,152 @@
+{
+  "freq": 857712500,
+  "freq_error": -17,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 7,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794337046,
+  "stop_time": 1794337063,
+  "start_time_ms": 1794337046894,
+  "stop_time_ms": 1794337063201,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 11,
+  "call_length_ms": 10980,
+  "talkgroup": 1191,
+  "talkgroup_tag": "East Ridge PD Main",
+  "talkgroup_description": "East Ridge PD Main",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857712500,
+      "time": 1794337046,
+      "pos": 0.0,
+      "len": 1.62,
+      "error_count": 90,
+      "spike_count": 6
+    },
+    {
+      "freq": 857712500,
+      "time": 1794337049,
+      "pos": 1.62,
+      "len": 1.08,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794337051,
+      "pos": 2.7,
+      "len": 0.36,
+      "error_count": 90,
+      "spike_count": 6
+    },
+    {
+      "freq": 857712500,
+      "time": 1794337053,
+      "pos": 3.06,
+      "len": 1.26,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794337054,
+      "pos": 4.32,
+      "len": 0.36,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794337056,
+      "pos": 4.68,
+      "len": 5.94,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794337062,
+      "pos": 10.62,
+      "len": 0.36,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010027,
+      "time": 1794337046,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 39784,
+      "time": 1794337049,
+      "pos": 1.62,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010027,
+      "time": 1794337051,
+      "pos": 2.7,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 39784,
+      "time": 1794337053,
+      "pos": 3.06,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010027,
+      "time": 1794337054,
+      "pos": 4.32,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 39784,
+      "time": 1794337056,
+      "pos": 4.68,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010027,
+      "time": 1794337062,
+      "pos": 10.62,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

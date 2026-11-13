@@ -1,0 +1,67 @@
+{
+  "freq": 857437500,
+  "freq_error": -26,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 4,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794182986,
+  "stop_time": 1794182993,
+  "start_time_ms": 1794182986116,
+  "stop_time_ms": 1794182993556,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 6,
+  "call_length_ms": 5760,
+  "talkgroup": 1061,
+  "talkgroup_tag": "HC CFD Dispatch",
+  "talkgroup_description": "HC CFD Dispatch",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857437500,
+      "time": 1794182986,
+      "pos": 0.0,
+      "len": 3.06,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857437500,
+      "time": 1794182990,
+      "pos": 3.06,
+      "len": 2.7,
+      "error_count": 90,
+      "spike_count": 6
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2020984,
+      "time": 1794182986,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010007,
+      "time": 1794182990,
+      "pos": 3.06,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "freq": 857712500,
+  "freq_error": -52,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 8,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794341588,
+  "stop_time": 1794341610,
+  "start_time_ms": 1794341588874,
+  "stop_time_ms": 1794341610024,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 15,
+  "call_length_ms": 15480,
+  "talkgroup": 1401,
+  "talkgroup_tag": "UTC Police Dispatch",
+  "talkgroup_description": "UTC Police Dispatch",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857712500,
+      "time": 1794341588,
+      "pos": 0.0,
+      "len": 3.24,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794341593,
+      "pos": 3.24,
+      "len": 2.16,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794341598,
+      "pos": 5.4,
+      "len": 2.7,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794341602,
+      "pos": 8.1,
+      "len": 7.38,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2012639,
+      "time": 1794341588,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010875,
+      "time": 1794341593,
+      "pos": 3.24,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2012639,
+      "time": 1794341598,
+      "pos": 5.4,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010875,
+      "time": 1794341602,
+      "pos": 8.1,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

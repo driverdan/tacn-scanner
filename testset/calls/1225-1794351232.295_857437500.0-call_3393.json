@@ -1,0 +1,67 @@
+{
+  "freq": 857437500,
+  "freq_error": -61,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 8,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794351232,
+  "stop_time": 1794351237,
+  "start_time_ms": 1794351232295,
+  "stop_time_ms": 1794351237169,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 4,
+  "call_length_ms": 3780,
+  "talkgroup": 1225,
+  "talkgroup_tag": "HCSO Dispatch West",
+  "talkgroup_description": "HCSO Dispatch West",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857437500,
+      "time": 1794351232,
+      "pos": 0.0,
+      "len": 2.52,
+      "error_count": 15,
+      "spike_count": 1
+    },
+    {
+      "freq": 857437500,
+      "time": 1794351235,
+      "pos": 2.52,
+      "len": 1.26,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 38316,
+      "time": 1794351232,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010036,
+      "time": 1794351235,
+      "pos": 2.52,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

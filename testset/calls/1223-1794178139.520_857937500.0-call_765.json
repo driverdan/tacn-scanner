@@ -1,0 +1,152 @@
+{
+  "freq": 857937500,
+  "freq_error": 128,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 4,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794178139,
+  "stop_time": 1794178171,
+  "start_time_ms": 1794178139520,
+  "stop_time_ms": 1794178171090,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 22,
+  "call_length_ms": 21960,
+  "talkgroup": 1223,
+  "talkgroup_tag": "HCSO Dispatch East",
+  "talkgroup_description": "HCSO Dispatch East",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857937500,
+      "time": 1794178139,
+      "pos": 0.0,
+      "len": 2.16,
+      "error_count": 45,
+      "spike_count": 3
+    },
+    {
+      "freq": 857937500,
+      "time": 1794178142,
+      "pos": 2.16,
+      "len": 1.26,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857937500,
+      "time": 1794178144,
+      "pos": 3.42,
+      "len": 4.68,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857937500,
+      "time": 1794178151,
+      "pos": 8.1,
+      "len": 7.56,
+      "error_count": 90,
+      "spike_count": 6
+    },
+    {
+      "freq": 857937500,
+      "time": 1794178159,
+      "pos": 15.66,
+      "len": 2.52,
+      "error_count": 45,
+      "spike_count": 3
+    },
+    {
+      "freq": 857937500,
+      "time": 1794178163,
+      "pos": 18.18,
+      "len": 2.52,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857937500,
+      "time": 1794178169,
+      "pos": 20.7,
+      "len": 1.26,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010053,
+      "time": 1794178139,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 38249,
+      "time": 1794178142,
+      "pos": 2.16,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010053,
+      "time": 1794178144,
+      "pos": 3.42,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010053,
+      "time": 1794178151,
+      "pos": 8.1,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010053,
+      "time": 1794178159,
+      "pos": 15.66,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010053,
+      "time": 1794178163,
+      "pos": 18.18,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 38249,
+      "time": 1794178169,
+      "pos": 20.7,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "freq": 857712500,
+  "freq_error": -3,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 5,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794177889,
+  "stop_time": 1794177891,
+  "start_time_ms": 1794177889066,
+  "stop_time_ms": 1794177891046,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 2,
+  "call_length_ms": 1980,
+  "talkgroup": 1051,
+  "talkgroup_tag": "HC CPD C (Charlie Dispatch)",
+  "talkgroup_description": "HC CPD C (Charlie Dispatch)",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857712500,
+      "time": 1794177889,
+      "pos": 0.0,
+      "len": 1.98,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010010,
+      "time": 1794177889,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

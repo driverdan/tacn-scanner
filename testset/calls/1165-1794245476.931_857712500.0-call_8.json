@@ -1,0 +1,67 @@
+{
+  "freq": 857712500,
+  "freq_error": -1325,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 4,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794245476,
+  "stop_time": 1794245481,
+  "start_time_ms": 1794245476931,
+  "stop_time_ms": 1794245481632,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 4,
+  "call_length_ms": 3780,
+  "talkgroup": 1165,
+  "talkgroup_tag": "HC EMS Main",
+  "talkgroup_description": "HC EMS Main",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857712500,
+      "time": 1794245476,
+      "pos": 0.0,
+      "len": 2.52,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794245480,
+      "pos": 2.52,
+      "len": 1.26,
+      "error_count": 45,
+      "spike_count": 3
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2011657,
+      "time": 1794245476,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010028,
+      "time": 1794245480,
+      "pos": 2.52,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

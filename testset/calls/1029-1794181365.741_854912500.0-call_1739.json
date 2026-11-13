@@ -1,0 +1,118 @@
+{
+  "freq": 854912500,
+  "freq_error": 42,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 0,
+  "recorder_num": 0,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794181365,
+  "stop_time": 1794181391,
+  "start_time_ms": 1794181365741,
+  "stop_time_ms": 1794181391854,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 19,
+  "call_length_ms": 19440,
+  "talkgroup": 1029,
+  "talkgroup_tag": "HC CPD B (Baker Dispatch)",
+  "talkgroup_description": "HC CPD B (Baker Dispatch)",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 854912500,
+      "time": 1794181365,
+      "pos": 0.0,
+      "len": 5.94,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 854912500,
+      "time": 1794181372,
+      "pos": 5.94,
+      "len": 5.94,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 854912500,
+      "time": 1794181379,
+      "pos": 11.88,
+      "len": 3.78,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 854912500,
+      "time": 1794181386,
+      "pos": 15.66,
+      "len": 3.06,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 854912500,
+      "time": 1794181391,
+      "pos": 18.72,
+      "len": 0.72,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010011,
+      "time": 1794181365,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2020816,
+      "time": 1794181372,
+      "pos": 5.94,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010011,
+      "time": 1794181379,
+      "pos": 11.88,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2020838,
+      "time": 1794181386,
+      "pos": 15.66,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010011,
+      "time": 1794181391,
+      "pos": 18.72,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

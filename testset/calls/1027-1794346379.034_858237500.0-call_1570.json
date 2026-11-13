@@ -1,0 +1,84 @@
+{
+  "freq": 858237500,
+  "freq_error": -180,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 8,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794346379,
+  "stop_time": 1794346392,
+  "start_time_ms": 1794346379034,
+  "stop_time_ms": 1794346392039,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 11,
+  "call_length_ms": 10980,
+  "talkgroup": 1027,
+  "talkgroup_tag": "HC CPD A (Adam Dispatch)",
+  "talkgroup_description": "HC CPD A (Adam Dispatch)",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 858237500,
+      "time": 1794346379,
+      "pos": 0.0,
+      "len": 6.12,
+      "error_count": 37,
+      "spike_count": 20
+    },
+    {
+      "freq": 858237500,
+      "time": 1794346385,
+      "pos": 6.12,
+      "len": 1.26,
+      "error_count": 20,
+      "spike_count": 5
+    },
+    {
+      "freq": 858237500,
+      "time": 1794346388,
+      "pos": 7.38,
+      "len": 3.6,
+      "error_count": 29,
+      "spike_count": 13
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2020627,
+      "time": 1794346379,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010024,
+      "time": 1794346385,
+      "pos": 6.12,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2020824,
+      "time": 1794346388,
+      "pos": 7.38,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

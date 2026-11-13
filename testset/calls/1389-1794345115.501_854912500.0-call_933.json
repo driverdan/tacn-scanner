@@ -1,0 +1,67 @@
+{
+  "freq": 854912500,
+  "freq_error": 153,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 0,
+  "recorder_num": 0,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794345115,
+  "stop_time": 1794345121,
+  "start_time_ms": 1794345115501,
+  "stop_time_ms": 1794345121112,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 5,
+  "call_length_ms": 5040,
+  "talkgroup": 1389,
+  "talkgroup_tag": "Erlanger Life Force Disp",
+  "talkgroup_description": "Erlanger Life Force Disp",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 854912500,
+      "time": 1794345115,
+      "pos": 0.0,
+      "len": 3.78,
+      "error_count": 15,
+      "spike_count": 1
+    },
+    {
+      "freq": 854912500,
+      "time": 1794345119,
+      "pos": 3.78,
+      "len": 1.26,
+      "error_count": 90,
+      "spike_count": 6
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2012076,
+      "time": 1794345115,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010020,
+      "time": 1794345119,
+      "pos": 3.78,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

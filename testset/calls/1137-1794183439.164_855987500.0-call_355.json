@@ -1,0 +1,84 @@
+{
+  "freq": 855987500,
+  "freq_error": -145,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 0,
+  "recorder_num": 0,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794183439,
+  "stop_time": 1794183448,
+  "start_time_ms": 1794183439164,
+  "stop_time_ms": 1794183448970,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 6,
+  "call_length_ms": 5760,
+  "talkgroup": 1137,
+  "talkgroup_tag": "CHA Airport Police Disp",
+  "talkgroup_description": "CHA Airport Police Disp",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 855987500,
+      "time": 1794183439,
+      "pos": 0.0,
+      "len": 1.44,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 855987500,
+      "time": 1794183443,
+      "pos": 1.44,
+      "len": 3.24,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 855987500,
+      "time": 1794183447,
+      "pos": 4.68,
+      "len": 1.08,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010346,
+      "time": 1794183439,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010346,
+      "time": 1794183443,
+      "pos": 1.44,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010339,
+      "time": 1794183447,
+      "pos": 4.68,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

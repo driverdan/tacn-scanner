@@ -1,0 +1,118 @@
+{
+  "freq": 857487500,
+  "freq_error": -4,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 7,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794353231,
+  "stop_time": 1794353246,
+  "start_time_ms": 1794353231365,
+  "stop_time_ms": 1794353246018,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 10,
+  "call_length_ms": 10260,
+  "talkgroup": 1191,
+  "talkgroup_tag": "East Ridge PD Main",
+  "talkgroup_description": "East Ridge PD Main",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857487500,
+      "time": 1794353231,
+      "pos": 0.0,
+      "len": 1.26,
+      "error_count": 90,
+      "spike_count": 6
+    },
+    {
+      "freq": 857487500,
+      "time": 1794353234,
+      "pos": 1.26,
+      "len": 0.9,
+      "error_count": 45,
+      "spike_count": 3
+    },
+    {
+      "freq": 857487500,
+      "time": 1794353235,
+      "pos": 2.16,
+      "len": 1.98,
+      "error_count": 90,
+      "spike_count": 6
+    },
+    {
+      "freq": 857487500,
+      "time": 1794353238,
+      "pos": 4.14,
+      "len": 1.62,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857487500,
+      "time": 1794353241,
+      "pos": 5.76,
+      "len": 4.5,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010027,
+      "time": 1794353231,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010259,
+      "time": 1794353234,
+      "pos": 1.26,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010027,
+      "time": 1794353235,
+      "pos": 2.16,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010259,
+      "time": 1794353238,
+      "pos": 4.14,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010027,
+      "time": 1794353241,
+      "pos": 5.76,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

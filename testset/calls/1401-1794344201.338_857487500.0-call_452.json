@@ -1,0 +1,118 @@
+{
+  "freq": 857487500,
+  "freq_error": 65,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 7,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794344201,
+  "stop_time": 1794344216,
+  "start_time_ms": 1794344201338,
+  "stop_time_ms": 1794344216934,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 9,
+  "call_length_ms": 9180,
+  "talkgroup": 1401,
+  "talkgroup_tag": "UTC Police Dispatch",
+  "talkgroup_description": "UTC Police Dispatch",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857487500,
+      "time": 1794344201,
+      "pos": 0.0,
+      "len": 0.36,
+      "error_count": 69,
+      "spike_count": 5
+    },
+    {
+      "freq": 857487500,
+      "time": 1794344202,
+      "pos": 0.36,
+      "len": 2.52,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857487500,
+      "time": 1794344207,
+      "pos": 2.88,
+      "len": 1.62,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857487500,
+      "time": 1794344210,
+      "pos": 4.5,
+      "len": 3.06,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857487500,
+      "time": 1794344215,
+      "pos": 7.56,
+      "len": 1.62,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2012620,
+      "time": 1794344201,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2012620,
+      "time": 1794344202,
+      "pos": 0.36,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010875,
+      "time": 1794344207,
+      "pos": 2.88,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2012620,
+      "time": 1794344210,
+      "pos": 4.5,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010875,
+      "time": 1794344215,
+      "pos": 7.56,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

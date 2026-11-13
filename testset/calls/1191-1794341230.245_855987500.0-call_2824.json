@@ -1,0 +1,50 @@
+{
+  "freq": 855987500,
+  "freq_error": -152,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 0,
+  "recorder_num": 2,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794341230,
+  "stop_time": 1794341231,
+  "start_time_ms": 1794341230245,
+  "stop_time_ms": 1794341231505,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 1,
+  "call_length_ms": 1260,
+  "talkgroup": 1191,
+  "talkgroup_tag": "East Ridge PD Main",
+  "talkgroup_description": "East Ridge PD Main",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 855987500,
+      "time": 1794341230,
+      "pos": 0.0,
+      "len": 1.26,
+      "error_count": 123,
+      "spike_count": 9
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010027,
+      "time": 1794341230,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

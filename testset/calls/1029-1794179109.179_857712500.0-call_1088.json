@@ -1,0 +1,67 @@
+{
+  "freq": 857712500,
+  "freq_error": -27,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 4,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794179109,
+  "stop_time": 1794179116,
+  "start_time_ms": 1794179109179,
+  "stop_time_ms": 1794179116775,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 6,
+  "call_length_ms": 6120,
+  "talkgroup": 1029,
+  "talkgroup_tag": "HC CPD B (Baker Dispatch)",
+  "talkgroup_description": "HC CPD B (Baker Dispatch)",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857712500,
+      "time": 1794179109,
+      "pos": 0.0,
+      "len": 5.04,
+      "error_count": 45,
+      "spike_count": 3
+    },
+    {
+      "freq": 857712500,
+      "time": 1794179115,
+      "pos": 5.04,
+      "len": 1.08,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010011,
+      "time": 1794179109,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2020838,
+      "time": 1794179115,
+      "pos": 5.04,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "freq": 857487500,
+  "freq_error": 23,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 10,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794345489,
+  "stop_time": 1794345506,
+  "start_time_ms": 1794345489596,
+  "stop_time_ms": 1794345506419,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 11,
+  "call_length_ms": 10800,
+  "talkgroup": 1367,
+  "talkgroup_tag": "Soddy-Daisy PD Main",
+  "talkgroup_description": "Soddy-Daisy PD Main",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857487500,
+      "time": 1794345489,
+      "pos": 0.0,
+      "len": 3.6,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857487500,
+      "time": 1794345493,
+      "pos": 3.6,
+      "len": 0.72,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857487500,
+      "time": 1794345495,
+      "pos": 4.32,
+      "len": 2.7,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857487500,
+      "time": 1794345500,
+      "pos": 7.02,
+      "len": 2.7,
+      "error_count": 45,
+      "spike_count": 3
+    },
+    {
+      "freq": 857487500,
+      "time": 1794345505,
+      "pos": 9.72,
+      "len": 1.08,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2010196,
+      "time": 1794345489,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010035,
+      "time": 1794345493,
+      "pos": 3.6,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010184,
+      "time": 1794345495,
+      "pos": 4.32,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010035,
+      "time": 1794345500,
+      "pos": 7.02,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2010184,
+      "time": 1794345505,
+      "pos": 9.72,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

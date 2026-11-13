@@ -1,0 +1,67 @@
+{
+  "freq": 855987500,
+  "freq_error": -178,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 0,
+  "recorder_num": 0,
+  "tdma_slot": 0,
+  "phase2_tdma": 0,
+  "start_time": 1794178310,
+  "stop_time": 1794178315,
+  "start_time_ms": 1794178310719,
+  "stop_time_ms": 1794178315053,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 3,
+  "call_length_ms": 3420,
+  "talkgroup": 1573,
+  "talkgroup_tag": "HC CPD Tac 3",
+  "talkgroup_description": "HC CPD Tac 3",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 855987500,
+      "time": 1794178310,
+      "pos": 0.0,
+      "len": 1.98,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 855987500,
+      "time": 1794178313,
+      "pos": 1.98,
+      "len": 1.44,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2011005,
+      "time": 1794178310,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2011251,
+      "time": 1794178313,
+      "pos": 1.98,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

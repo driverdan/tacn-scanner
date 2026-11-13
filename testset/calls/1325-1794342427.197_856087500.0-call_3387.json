@@ -1,0 +1,101 @@
+{
+  "freq": 856087500,
+  "freq_error": -360,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 0,
+  "recorder_num": 1,
+  "tdma_slot": 0,
+  "phase2_tdma": 1,
+  "start_time": 1794342427,
+  "stop_time": 1794342443,
+  "start_time_ms": 1794342427197,
+  "stop_time_ms": 1794342443157,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 12,
+  "call_length_ms": 12200,
+  "talkgroup": 1325,
+  "talkgroup_tag": "HCSO Jail Ops",
+  "talkgroup_description": "HCSO Jail Ops",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital tdma",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 856087500,
+      "time": 1794342427,
+      "pos": 0.0,
+      "len": 2.76,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 856087500,
+      "time": 1794342431,
+      "pos": 2.76,
+      "len": 0.88,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 856087500,
+      "time": 1794342433,
+      "pos": 3.64,
+      "len": 6.8,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 856087500,
+      "time": 1794342441,
+      "pos": 10.44,
+      "len": 1.76,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 37342,
+      "time": 1794342427,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 37515,
+      "time": 1794342431,
+      "pos": 2.76,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 37342,
+      "time": 1794342433,
+      "pos": 3.64,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 37515,
+      "time": 1794342441,
+      "pos": 10.44,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

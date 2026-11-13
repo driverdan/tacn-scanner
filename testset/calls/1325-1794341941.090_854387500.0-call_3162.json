@@ -1,0 +1,84 @@
+{
+  "freq": 854387500,
+  "freq_error": 170,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 0,
+  "recorder_num": 3,
+  "tdma_slot": 0,
+  "phase2_tdma": 1,
+  "start_time": 1794341941,
+  "stop_time": 1794341953,
+  "start_time_ms": 1794341941090,
+  "stop_time_ms": 1794341953937,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 8,
+  "call_length_ms": 8120,
+  "talkgroup": 1325,
+  "talkgroup_tag": "HCSO Jail Ops",
+  "talkgroup_description": "HCSO Jail Ops",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital tdma",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 854387500,
+      "time": 1794341941,
+      "pos": 0.0,
+      "len": 3.32,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 854387500,
+      "time": 1794341947,
+      "pos": 3.32,
+      "len": 1.24,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 854387500,
+      "time": 1794341950,
+      "pos": 4.56,
+      "len": 3.56,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 37342,
+      "time": 1794341941,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 37491,
+      "time": 1794341947,
+      "pos": 3.32,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 37342,
+      "time": 1794341950,
+      "pos": 4.56,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}

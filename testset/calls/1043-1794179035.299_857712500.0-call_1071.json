@@ -1,0 +1,84 @@
+{
+  "freq": 857712500,
+  "freq_error": -21,
+  "signal": 999,
+  "noise": 999,
+  "source_num": 1,
+  "recorder_num": 5,
+  "tdma_slot": 0,
+  "phase2_tdma": 1,
+  "start_time": 1794179035,
+  "stop_time": 1794179045,
+  "start_time_ms": 1794179035299,
+  "stop_time_ms": 1794179045167,
+  "emergency": 0,
+  "priority": 4,
+  "mode": 0,
+  "duplex": 0,
+  "encrypted": 0,
+  "call_length": 7,
+  "call_length_ms": 6960,
+  "talkgroup": 1043,
+  "talkgroup_tag": "HC CPD City Net 2",
+  "talkgroup_description": "HC CPD City Net 2",
+  "talkgroup_group_tag": "Public Safety",
+  "talkgroup_group": "Chattanooga",
+  "color_code": -1,
+  "audio_type": "digital tdma",
+  "short_name": "tacn",
+  "freqList": [
+    {
+      "freq": 857712500,
+      "time": 1794179035,
+      "pos": 0.0,
+      "len": 3.32,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794179039,
+      "pos": 3.32,
+      "len": 1.32,
+      "error_count": 0,
+      "spike_count": 0
+    },
+    {
+      "freq": 857712500,
+      "time": 1794179042,
+      "pos": 4.64,
+      "len": 2.32,
+      "error_count": 0,
+      "spike_count": 0
+    }
+  ],
+  "srcList": [
+    {
+      "src": 2021314,
+      "time": 1794179035,
+      "pos": 0.0,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2021058,
+      "time": 1794179039,
+      "pos": 3.32,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    },
+    {
+      "src": 2021314,
+      "time": 1794179042,
+      "pos": 4.64,
+      "emergency": 0,
+      "signal_system": "",
+      "tag": "",
+      "tag_ota": ""
+    }
+  ]
+}
