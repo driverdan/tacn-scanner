@@ -37,6 +37,7 @@ Read `README.md` first. It covers what the project does, the architecture, setup
   - Call mode vs clip mode: 10.7% vs 17.0%, and 25% vs 42% on clips under 2 s.
   - No prompt: 17.1%. Removing `DEFAULT_PROMPT`'s place-name list: 13.9%. Example-sentence prompts per agency: 13.3%. The same list-style prompt adapted per agency: 11.1% (HCSO worse, the other groups too small to tell).
   - `--context`: 13.5% (2 lines, call mode), 18.0% (3 lines, clip mode). It stays off.
+  - Whisper medium (tested 2026-11-10, same settings): 22.0% (42% / 28% / 14% by length), about double large-v3's error on every length bucket. Kept large-v3.
   - VAD off: 13.4%. VAD threshold 0.35: 12.1%. `no_speech_threshold=None`: identical output. Keep the current VAD settings.
 - **Testing:** there are no automated tests. Verify with a timed live run, e.g. `timeout 120 ./trunk-recorder.sh`, then check `logs/trunk-recorder/transcripts.jsonl` (`proc_s` is transcription time) and `transcriber.log` (`backlog` warnings). `testset.py score --drafts` is a quick check that the Whisper helpers still import.
 - **Docs:** user-facing changes (settings, commands, talkgroups, results) go in `README.md`; implementation details go here.
