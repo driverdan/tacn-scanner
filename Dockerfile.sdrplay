@@ -1,0 +1,46 @@
+# trunk-recorder plus SDRplay support (RSP1B and the other RSPs), used by compose.sdrplay.yaml.
+# Adds to the stock image:
+#   - SDRplay's API library and its sdrplay_apiService daemon (proprietary; the build downloads
+#     the installer from sdrplay.com, so building this image accepts SDRplay's license:
+#     https://www.sdrplay.com/api)
+#   - SoapySDRPlay3, the SoapySDR module that gr-osmosdr reaches the API through
+#   - an entrypoint that starts the daemon before trunk-recorder
+ARG TR_IMAGE=robotastic/trunk-recorder:5.2.1
+
+# Same Ubuntu release as the trunk-recorder image, so the module matches its libSoapySDR 0.8.
+FROM ubuntu:24.04 AS build
+ARG SDRPLAY_API=3.15.2
+ARG SDRPLAY_API_SHA256=3a97ca764263bbe76fb0f2220e6408942357e8864c19e1408a6d6987af382fe3
+# Release 0.5.3: needs API 3.15, supports the RSP1B.
+ARG SOAPYSDRPLAY_COMMIT=6cc31316b730503cee3e30906ff1975175a16400
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential ca-certificates cmake curl libsoapysdr-dev \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+# The installer is a makeself archive. It is interactive and wants sudo, systemd and udev, so
+# unpack its payload (the tar.gz after the "eval $finish; exit $res" line) and place the files by hand.
+RUN curl -fsSL -o api.run "https://www.sdrplay.com/software/SDRplay_RSP_API-Linux-${SDRPLAY_API}.run" \
+ && echo "${SDRPLAY_API_SHA256}  api.run" | sha256sum -c - \
+ && mkdir api \
+ && tail -n +"$(( $(grep -a -n -m1 '^eval \$finish; exit \$res' api.run | cut -d: -f1) + 1 ))" api.run | tar xz -C api \
+ && arch="$(dpkg --print-architecture)" \
+ && lib="$(basename api/"$arch"/libsdrplay_api.so.*)" \
+ && mkdir -p /out/usr/local/lib /out/opt/sdrplay_api \
+ && install -m 644 "api/$arch/$lib" /out/usr/local/lib/ \
+ && ln -s "$lib" "/out/usr/local/lib/${lib%.*}" \
+ && ln -s "${lib%.*}" /out/usr/local/lib/libsdrplay_api.so \
+ && install -m 755 "api/$arch/sdrplay_apiService" /out/opt/sdrplay_api/ \
+ && install -m 644 api/sdrplay_license.txt /out/opt/sdrplay_api/ \
+ && cp -a /out/usr/local/lib/. /usr/local/lib/ \
+ && cp api/inc/*.h /usr/local/include/
+RUN curl -fsSL "https://github.com/pothosware/SoapySDRPlay3/archive/${SOAPYSDRPLAY_COMMIT}.tar.gz" | tar xz \
+ && cmake -S "SoapySDRPlay3-${SOAPYSDRPLAY_COMMIT}" -B soapy -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
+ && cmake --build soapy -j "$(nproc)" \
+ && DESTDIR=/out cmake --install soapy
+
+FROM ${TR_IMAGE}
+COPY --from=build /out/ /
+COPY --chmod=755 sdrplay-entrypoint.sh /usr/local/bin/sdrplay-entrypoint.sh
+RUN ldconfig
+ENTRYPOINT ["/usr/local/bin/sdrplay-entrypoint.sh"]
+CMD ["trunk-recorder", "--config=/app/config.json"]

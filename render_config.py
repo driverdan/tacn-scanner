@@ -8,7 +8,11 @@ starts. The SDR settings come from the environment (config/scanner.conf via env_
 Leave SDR2_PORT and SDR2_ARGS empty to run on the first dongle alone (partial coverage).
 Each dongle is either remote (rtl_tcp, from SDR_HOST/SDR_PORT) or plugged into this machine
 (SDR_ARGS=rtl=<index or serial>, which needs compose.usb.yaml for the USB passthrough).
-Window centers and rates live in config/trunk-recorder.json. Standard library only.
+Window centers and rates live in config/trunk-recorder.json.
+
+An SDRplay RSP (SDR_ARGS=soapy=0,driver=sdrplay, which also needs compose.sdrplay.yaml) is wide
+enough for the whole site, so it replaces both dongles with one source: see sdrplay_source().
+Standard library only.
 """
 import csv
 import json
@@ -27,7 +31,15 @@ R820T_GAINS = [0, 0.9, 1.4, 2.7, 3.7, 7.7, 8.7, 12.5, 14.4, 15.7, 16.6, 19.7, 20
                29.7, 32.8, 33.8, 36.4, 37.2, 38.6, 40.2, 42.1, 43.4, 43.9, 44.5, 48, 49.6]
 
 # osmosdr device strings for hardware attached to this machine (as opposed to rtl_tcp=host:port).
-LOCAL_DEVICE = re.compile(r"(rtl|airspy|airspyhf|hackrf|bladerf|miri)(=|,|$)")
+LOCAL_DEVICE = re.compile(r"(rtl|airspy|airspyhf|hackrf|bladerf|miri|soapy)(=|,|$)")
+# An SDRplay RSP, reached through SoapySDR. trunk-recorder also looks for "sdrplay" in the string.
+SDRPLAY = re.compile(r"(^|,)driver=sdrplay(,|$)")
+# The RSP's sample rate. It must be a multiple of 24 kHz for trunk-recorder and at least 6 MS/s:
+# SoapySDRPlay3 picks the IF filter from the rate, and below 6 MS/s that is 5 MHz or narrower,
+# which leaves little or nothing beyond the site's 4.05 MHz.
+SDRPLAY_RATE = 6000000
+# SoapySDRPlay3's gain stages. Both are gain *reductions*: IFGR in dB, RFGR as an LNA state.
+SDRPLAY_GAINS = {"IFGR": (20, 59), "RFGR": (0, 9)}
 
 # The Chattanooga Simulcast site's 16 channels (RadioReference sid 6355), for the coverage check.
 SITE = [854.3875, 854.9125, 855.1875, 855.2125, 855.9875, 856.0875, 856.2375, 856.7625,
@@ -59,6 +71,16 @@ def devices():
 
     # compose.usb.yaml sets SDR_USB. Without its passthrough trunk-recorder would only find no device.
     usb = [a for a, _, _ in devs if LOCAL_DEVICE.match(a)]
+    if any(SDRPLAY.search(a) for a in usb):
+        if not SDRPLAY.search(args):
+            sys.exit(f"{args2}: an SDRplay RSP must be the first SDR (SDR_ARGS). It covers the whole site alone")
+        if len(devs) > 1:
+            sys.exit(f"{args}: an SDRplay RSP covers the whole site alone. "
+                     "Leave SDR2_PORT and SDR2_ARGS empty in config/scanner.conf")
+        if not setting("SDR_SDRPLAY"):
+            sys.exit(f"{args}: an SDRplay RSP needs compose.usb.yaml and compose.sdrplay.yaml. Run\n"
+                     "  docker compose -f compose.yaml -f compose.usb.yaml -f compose.sdrplay.yaml up -d --build\n"
+                     "or put COMPOSE_FILE=compose.yaml:compose.usb.yaml:compose.sdrplay.yaml in .env")
     if usb and not setting("SDR_USB"):
         sys.exit(f"{', '.join(usb)}: a USB SDR needs compose.usb.yaml for the USB passthrough. Run\n"
                  "  docker compose -f compose.yaml -f compose.usb.yaml up -d\n"
@@ -66,6 +88,27 @@ def devices():
     if len(usb) == 2 and usb[0] == usb[1]:
         sys.exit(f"Both SDRs are set to {usb[0]}: give each its own index or serial")
     return devs
+
+
+def sdrplay_source(source, gains):
+    """Turn the first source into one window over the whole site, for an SDRplay RSP."""
+    stages = {}
+    for part in filter(None, (p.strip() for p in gains.split(","))):
+        name, _, value = part.partition(":")
+        name = name.strip().upper()
+        if name not in SDRPLAY_GAINS or not re.fullmatch(r"\d+", value.strip()):
+            sys.exit(f"SDR_GAINS={gains}: an SDRplay RSP takes IFGR and RFGR, e.g. SDR_GAINS=RFGR:3,IFGR:40")
+        low, high = SDRPLAY_GAINS[name]
+        if not low <= int(value) <= high:
+            sys.exit(f"SDR_GAINS={gains}: {name} must be {low}-{high}")
+        stages[name] = int(value)
+    if not stages:
+        sys.exit("SDR_GAINS must be set for an SDRplay RSP, e.g. SDR_GAINS=RFGR:3,IFGR:40")
+    # Centered on the site. No channel is within 100 kHz of the center, where a zero-IF receiver
+    # has its DC spike.
+    source.update(center=round((SITE[0] + SITE[-1]) / 2 * 1e6), rate=SDRPLAY_RATE,
+                  digitalRecorders=len(SITE), gainSettings=stages)
+    del source["gain"]  # there is no overall gain: trunk-recorder sets the stages by name
 
 
 def write_atomic(path, write):
@@ -87,6 +130,8 @@ def main():
         gain = re.search(r"(-?\d+(?:\.\d+)?)", gains)  # osmosdr "LNA:40" -> 40
         gain = float(gain.group(1)) if gain else 40
         s.update(device=args, ppm=float(ppm), gain=min(R820T_GAINS, key=lambda g: abs(g - gain)))
+        if SDRPLAY.search(args):
+            sdrplay_source(s, gains)
 
     # Whitelist + display names. No Priority column: every talkgroup gets trunk-recorder's default
     # priority 1, i.e. it is recorded whenever a recorder is free on its source.
@@ -113,10 +158,11 @@ def main():
 
     covered = set()
     for s in cfg["sources"]:
-        half = s["rate"] / 2e6 * 0.85  # stay off the RTL's filter roll-off at the edges
+        half = s["rate"] / 2e6 * 0.85  # stay off the filter roll-off at the edges
         mine = [f for f in SITE if abs(f - s["center"] / 1e6) <= half]
         covered.update(mine)
-        print(f"SDR {s['device']}  gain={s['gain']}  ppm={s['ppm']}  center {s['center'] / 1e6:.4f} MHz "
+        gain = s.get("gain", s.get("gainSettings"))
+        print(f"SDR {s['device']}  gain={gain}  ppm={s['ppm']}  center {s['center'] / 1e6:.4f} MHz "
               f"@ {s['rate'] / 1e6} MS/s -> {len(mine)} site channels")
     missing = [f for f in SITE if f not in covered]
     print(f"Coverage: {len(covered)}/{len(SITE)} site channels"

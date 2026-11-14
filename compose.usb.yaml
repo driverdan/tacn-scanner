@@ -1,5 +1,6 @@
 # Adds USB passthrough, for SDRs plugged into this machine (SDR_ARGS=rtl=... in config/scanner.conf).
-# Not needed for rtl_tcp. Use it together with compose.yaml:
+# Not needed for rtl_tcp. An SDRplay RSP needs compose.sdrplay.yaml as well.
+# Use it together with compose.yaml:
 #
 #   docker compose -f compose.yaml -f compose.usb.yaml up -d --build
 #
@@ -20,5 +21,6 @@ services:
     device_cgroup_rules:
       - "c 189:* rwm"
     # The group the host's udev rules give SDRs to (rtl-sdr's rules: plugdev, gid 46 on Debian/Ubuntu).
+    # Not needed for an SDRplay if SDRplay's own rules are installed: they make it world-writable.
     group_add:
       - "${SDR_USB_GID:-46}"

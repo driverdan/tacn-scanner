@@ -8,6 +8,7 @@ Nothing plays live. Calls are recorded and transcribed, and the transcripts appe
 
 ```
 2 × RTL-SDR (R820T) ── rtl_tcp 192.168.8.132:1234 and :1235, or plugged in over USB
+(or 1 × SDRplay RSP1B over USB)
         │  IQ samples over TCP or USB
         ▼
 trunk-recorder  (container, robotastic/trunk-recorder:5.2.1)
@@ -27,14 +28,14 @@ Each call is transcribed in one pass with word timestamps, then split back into 
 
 ## Requirements
 
-- **Two RTL-SDR dongles**, each either served over the network with `rtl_tcp` (one per port) or plugged into this machine (see [USB dongles](#usb-dongles)). The site's channels span about 4.05 MHz, more than one RTL-SDR can see, so it takes two. One dongle works but covers only 7 of the 16 channels.
+- **Two RTL-SDR dongles**, each either served over the network with `rtl_tcp` (one per port) or plugged into this machine (see [USB dongles](#usb-dongles)). The site's channels span about 4.05 MHz, more than one RTL-SDR can see, so it takes two. One dongle works but covers only 7 of the 16 channels. A single **SDRplay RSP1B** on USB covers the whole site instead (see [SDRplay RSP1B](#sdrplay-rsp1b)).
 - **Docker with Compose v2** (`docker compose version` must work; the old `docker-compose` 1.x doesn't work with current Docker). Your user must be in the `docker` group.
 - **A reasonably fast CPU.** Whisper runs on the CPU and takes about 3–4 s per call with large-v3, however short the call is.
 - For `testset.py` only: Python 3 with a venv (see [Measuring transcription accuracy](#measuring-transcription-accuracy)), and for `testset.py label` an audio player (`paplay`, `pw-play`, `aplay` or `ffplay`).
 
 ## Setup
 
-1. Set your SDRs' addresses in `config/scanner.conf` (see [Configuration](#configuration)). For dongles plugged into this machine, follow [USB dongles](#usb-dongles).
+1. Set your SDRs' addresses in `config/scanner.conf` (see [Configuration](#configuration)). For dongles plugged into this machine, follow [USB dongles](#usb-dongles) or [SDRplay RSP1B](#sdrplay-rsp1b).
 2. Create the directories the containers write to, so that they belong to you and not to root: `mkdir -p logs/trunk-recorder ~/.cache/huggingface`
 3. If your user ID isn't 1000 (`id -u`), put `SCANNER_UID=…` and `SCANNER_GID=…` in a `.env` file next to `compose.yaml`. The containers run as that user.
 
@@ -88,10 +89,11 @@ Encrypted calls are not recorded or transcribed.
 | `config/prompts.json` | Optional per-talkgroup Whisper prompts (`{"default": "...", "groups": [{"name": ..., "tgids": [...], "prompt": "..."}]}`). Not present by default: per-agency prompts tested worse than the built-in one. |
 | `compose.yaml` | The containers. `TR_IMAGE` (environment or `.env`) picks another trunk-recorder image. |
 | `compose.usb.yaml` | Adds USB passthrough to trunk-recorder, for [USB dongles](#usb-dongles). |
+| `compose.sdrplay.yaml` | Builds and runs trunk-recorder with SDRplay support (`Dockerfile.sdrplay`), for an [SDRplay RSP1B](#sdrplay-rsp1b). |
 
 **To record more or fewer talkgroups**, edit `config/whitelist.tsv`, name any new ones in `config/talkgroups.tsv`, and run `docker compose restart trunk-recorder`.
 
-**SDR windows.** The first SDR (`SDR_*`, port 1234) is centered on 855.3125 MHz and covers 854.3875–856.2375, including the primary control channel. The second (`SDR2_*`, port 1235) is centered on 857.6 MHz and covers 856.7625–858.4375. trunk-recorder records only channels inside these windows. If you move the centers, keep each source's `digitalRecorders` equal to the number of site channels in its window (currently 7 and 9).
+**SDR windows.** With RTL-SDRs, the first SDR (`SDR_*`, port 1234) is centered on 855.3125 MHz and covers 854.3875–856.2375, including the primary control channel. The second (`SDR2_*`, port 1235) is centered on 857.6 MHz and covers 856.7625–858.4375. trunk-recorder records only channels inside these windows. If you move the centers, keep each source's `digitalRecorders` equal to the number of site channels in its window (currently 7 and 9).
 
 ### USB dongles
 
@@ -122,6 +124,47 @@ If trunk-recorder can't open a dongle:
 - Only one program can use a dongle at a time: stop `rtl_tcp`, `rtl_test` and other SDR software first.
 
 Gain and ppm work as they do over `rtl_tcp`. This has been tested as far as the container reaching the host's USB devices, not with a dongle attached: the dongles here are remote.
+
+### SDRplay RSP1B
+
+One RSP1B plugged into this machine replaces both RTL-SDRs: it samples 6 MHz at once, centered on 856.4125 MHz, which takes in all 16 site channels. The other RSP models should work the same way but haven't been considered in detail.
+
+The stock trunk-recorder image has no SDRplay driver, so `compose.sdrplay.yaml` builds one that does. The build downloads SDRplay's proprietary API (3.15.2) from sdrplay.com; by building the image you accept [SDRplay's license](https://www.sdrplay.com/api). Nothing from SDRplay has to be installed on the host. If the SDRplay API is installed there anyway, stop its service (`sudo systemctl disable --now sdrplay`), because only one service can hold the RSP.
+
+1. Let your SDR group use the RSP. Without this, only root can open it:
+
+   ```bash
+   echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="1df7", MODE="0660", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/66-sdrplay.rules
+   sudo udevadm control --reload
+   ```
+
+   Then replug the RSP. `lsusb -d 1df7:` shows its bus and device number, and `ls -l /dev/bus/usb/BUS/DEVICE` should show `root plugdev`.
+2. In `config/scanner.conf`:
+
+   ```
+   SDR_ARGS=soapy=0,driver=sdrplay
+   SDR_GAINS=RFGR:3,IFGR:40
+   SDR_PPM=0
+   SDR2_PORT=
+   SDR2_ARGS=
+   ```
+
+   With more than one RSP attached, pick one by serial number: `SDR_ARGS=soapy=0,driver=sdrplay,serial=…`. Further `key=value` pairs in the string are passed to the driver as settings, e.g. `,biasT_ctrl=true` for the bias tee.
+3. Add both USB override files. Put this in `.env` next to `compose.yaml`:
+
+   ```
+   COMPOSE_FILE=compose.yaml:compose.usb.yaml:compose.sdrplay.yaml
+   ```
+
+4. `docker compose up -d --build`, then check `docker compose logs trunk-recorder-config` (it should report 16/16 site channels from one SDR) and `docker compose logs trunk-recorder`.
+
+**Gain.** An RSP has two stages, and both numbers are gain *reductions*: a higher number means less gain. `RFGR` is the LNA state, 0 (most gain) to 9 (least). `IFGR` is the IF reduction in dB, 20 to 59. `RFGR:3,IFGR:40` is only a starting point. If the control channel decodes badly, try more gain (lower numbers) first; if calls get worse when the site is busy, the front end is overloading, so raise `RFGR`. The RSP's AGC stays off.
+
+**Frequency correction.** The RSP1B's oscillator is good to 0.5 ppm, so start with `SDR_PPM=0` (the −4 in `scanner.conf` belongs to the RTL-SDRs). Fractions of a ppm are accepted.
+
+If trunk-recorder logs `no available RSP devices found`, the RSP isn't plugged in, step 1 hasn't taken effect (replug it), or another program or SDRplay service has it. Restart trunk-recorder after replugging the RSP.
+
+This has been tested as far as the image building and trunk-recorder loading the driver and asking SDRplay's API for a device, not with an RSP attached.
 
 ### Tuning reception
 

@@ -1,0 +1,22 @@
+# For an SDRplay RSP (RSP1B) plugged into this machine (SDR_ARGS=soapy=0,driver=sdrplay in
+# config/scanner.conf). Builds trunk-recorder with SDRplay support (Dockerfile.sdrplay) and runs
+# that image. Use it together with compose.yaml and compose.usb.yaml (the USB passthrough):
+#
+#   docker compose -f compose.yaml -f compose.usb.yaml -f compose.sdrplay.yaml up -d --build
+#
+# or put this line in .env so that plain `docker compose` always includes them:
+#
+#   COMPOSE_FILE=compose.yaml:compose.usb.yaml:compose.sdrplay.yaml
+
+services:
+  trunk-recorder-config:
+    environment:
+      SDR_SDRPLAY: "1"    # tells render_config.py that trunk-recorder has the SDRplay driver
+
+  trunk-recorder:
+    build:
+      context: .
+      dockerfile: Dockerfile.sdrplay
+      args:
+        TR_IMAGE: ${TR_IMAGE:-robotastic/trunk-recorder:5.2.1}
+    image: scanner-trunk-recorder-sdrplay
