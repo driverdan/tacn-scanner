@@ -1,0 +1,24 @@
+# Runs Whisper on an AMD GPU (ROCm). Builds the transcriber image's `rocm` stage (see Dockerfile:
+# about 6 GB more than the CPU image) and gives the container the GPU. Without a usable GPU the
+# transcriber still starts and uses the CPU. Use it together with compose.yaml:
+#
+#   docker compose -f compose.yaml -f compose.rocm.yaml up -d --build
+#
+# or put this line in .env so that plain `docker compose` always includes it:
+#
+#   COMPOSE_FILE=compose.yaml:compose.rocm.yaml
+
+services:
+  transcriber:
+    build:
+      context: .
+      target: rocm
+    image: scanner-transcriber-rocm
+    devices:
+      - /dev/kfd    # ROCm's compute interface
+      - /dev/dri    # the GPU's render node
+    # The groups that own those device nodes on the host: `stat -c '%g %n' /dev/kfd /dev/dri/*`
+    # (Ubuntu 24.04: render 992, video 44).
+    group_add:
+      - "${GPU_RENDER_GID:-992}"
+      - "${GPU_VIDEO_GID:-44}"

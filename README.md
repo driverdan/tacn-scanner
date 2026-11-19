@@ -18,7 +18,7 @@ trunk-recorder  (container, robotastic/trunk-recorder:5.2.1)
         ▼
 transcriber  (container, built from the Dockerfile: tr_transcriber.py)
   • watches media/ for finished calls
-  • faster-whisper large-v3 (CPU, int8), one pass per call, split back per transmission
+  • faster-whisper large-v3 (on the CPU, or an AMD GPU), one pass per call, split back per transmission
   • → its log + logs/trunk-recorder/transcripts.{txt,jsonl}
 ```
 
@@ -30,7 +30,7 @@ Each call is transcribed in one pass with word timestamps, then split back into 
 
 - **Two RTL-SDR dongles**, each either served over the network with `rtl_tcp` (one per port) or plugged into this machine (see [USB dongles](#usb-dongles)). The site's channels span about 4.05 MHz, more than one RTL-SDR can see, so it takes two. One dongle works but covers only 7 of the 16 channels. A single **SDRplay RSP1B** on USB covers the whole site instead (see [SDRplay RSP1B](#sdrplay-rsp1b)).
 - **Docker with Compose v2** (`docker compose version` must work; the old `docker-compose` 1.x doesn't work with current Docker). Your user must be in the `docker` group.
-- **A reasonably fast CPU.** Whisper runs on the CPU and takes about 3–4 s per call with large-v3, however short the call is.
+- **A reasonably fast CPU.** Whisper runs on the CPU and takes about 3–4 s per call with large-v3, however short the call is. It can run on an AMD GPU instead (see [GPU](#gpu)), and uses the CPU whenever there is no GPU it can use.
 - For `testset.py` only: Python 3 with a venv (see [Measuring transcription accuracy](#measuring-transcription-accuracy)), and for `testset.py label` an audio player (`paplay`, `pw-play`, `aplay` or `ffplay`).
 
 ## Setup
@@ -69,7 +69,7 @@ Everything goes under `logs/trunk-recorder/`:
 | File | What |
 |---|---|
 | `transcripts.txt` | One plain-text line per transmission |
-| `transcripts.jsonl` | The same as JSON, with talkgroup, radio ID, timing and transcription time (`proc_s`). `wav` is the recording's path relative to this directory |
+| `transcripts.jsonl` | The same as JSON, with talkgroup, radio ID, timing and transcription time (`proc_s`). `wav` is the recording's path relative to this directory. `words` lists each word with Whisper's probability for it (0–1): on the test set 1.7% of words at 0.95 or above were wrong and 26% of those below 0.5, so a low value is a hint, not proof of an error |
 | `media/` | Each call's WAV and JSON from trunk-recorder |
 
 The containers' own output is in Docker's logs (`docker compose logs trunk-recorder` or `transcriber`), capped at 100 MB per container. `backlog` warnings from the transcriber mean Whisper can't keep up.
@@ -82,7 +82,7 @@ Encrypted calls are not recorded or transcribed.
 
 | File | What |
 |---|---|
-| `config/scanner.conf` | Your settings, as plain `KEY=value` lines: the SDRs (`SDR_HOST`/`SDR_PORT` or a full `SDR_ARGS`, `SDR_GAINS`, `SDR_PPM`, and the `SDR2_*` equivalents) and `WHISPER_MODEL`. Leave `SDR2_PORT` empty to run on the first dongle alone. Apply a change with `docker compose up -d`. |
+| `config/scanner.conf` | Your settings, as plain `KEY=value` lines: the SDRs (`SDR_HOST`/`SDR_PORT` or a full `SDR_ARGS`, `SDR_GAINS`, `SDR_PPM`, and the `SDR2_*` equivalents), `WHISPER_MODEL` and `WHISPER_DEVICE` (see [GPU](#gpu)). Leave `SDR2_PORT` empty to run on the first dongle alone. Apply a change with `docker compose up -d`. |
 | `config/whitelist.tsv` | The talkgroups to record, one ID per line. Read at startup, so run `docker compose restart trunk-recorder` after editing. |
 | `config/talkgroups.tsv` | `tgid<TAB>name`. Display names for talkgroups; may list more than the whitelist. |
 | `config/trunk-recorder.json` | trunk-recorder's config template: the SDR window centers, sample rates and recorder counts. Don't set device, gain or ppm here; they are filled in from `scanner.conf`. |
@@ -90,6 +90,7 @@ Encrypted calls are not recorded or transcribed.
 | `compose.yaml` | The containers. `TR_IMAGE` (environment or `.env`) picks another trunk-recorder image. |
 | `compose.usb.yaml` | Adds USB passthrough to trunk-recorder, for [USB dongles](#usb-dongles). |
 | `compose.sdrplay.yaml` | Builds and runs trunk-recorder with SDRplay support (`Dockerfile.sdrplay`), for an [SDRplay RSP1B](#sdrplay-rsp1b). |
+| `compose.rocm.yaml` | Builds and runs the transcriber with AMD GPU support, for Whisper on the [GPU](#gpu). |
 
 **To record more or fewer talkgroups**, edit `config/whitelist.tsv`, name any new ones in `config/talkgroups.tsv`, and run `docker compose restart trunk-recorder`.
 
@@ -166,6 +167,43 @@ If trunk-recorder logs `no available RSP devices found`, the RSP isn't plugged i
 
 This has been tested as far as the image building and trunk-recorder loading the driver and asking SDRplay's API for a device, not with an RSP attached.
 
+### GPU
+
+The transcriber picks where Whisper runs when it starts (`WHISPER_DEVICE` in `config/scanner.conf`):
+
+| `WHISPER_DEVICE` | What happens |
+|---|---|
+| `auto` (default) | The GPU if there is one and a test transcription works on it, otherwise the CPU. If the GPU fails later, the transcriber moves to the CPU and carries on. |
+| `cpu` | Always the CPU. |
+| `gpu` | The GPU, and the transcriber fails to start without one. |
+
+Its log says which it chose: `whisper ready (GPU)`, or `GPU not used (…); falling back to the CPU`.
+
+The standard image has no GPU support, so it always ends up on the CPU. For an **AMD GPU** (ROCm: Radeon RX 6000 series and later, and recent Ryzen integrated graphics), add `compose.rocm.yaml`:
+
+1. Check that the host has the `amdgpu` kernel driver's compute device: `ls /dev/kfd`. ROCm itself doesn't need to be installed on the host; it is in the image.
+2. Check which groups own the GPU's device nodes: `stat -c '%g %n' /dev/kfd /dev/dri/*`. If they aren't 992 (`render`) and 44 (`video`), put `GPU_RENDER_GID=…` and `GPU_VIDEO_GID=…` in `.env`.
+3. Put this in `.env` next to `compose.yaml` (add it to the list if `COMPOSE_FILE` is already there):
+
+   ```
+   COMPOSE_FILE=compose.yaml:compose.rocm.yaml
+   ```
+
+4. `docker compose up -d --build`. The first build downloads about 2 GB of ROCm libraries, and the image is 8.5 GB against 0.7 GB.
+
+**Whether it is worth it depends on the GPU.** Measured on a Ryzen AI 9 HX 370 with its integrated Radeon 890M (2026-11-18, 272 calls, large-v3):
+
+| Whisper on | Time per call | WER |
+|---|---|---|
+| CPU, standard image (int8, 12 threads) | 4.4 s | 10.0% |
+| Radeon 890M (float16) | 3.6 s | 11.7% |
+| Radeon 890M (float32) | 12 s | 11.7% |
+| CPU, ROCm image (the fallback) | 4.6 s | 11.5% |
+
+So on this integrated GPU, Whisper is about 18% faster and leaves the CPU free, but gets 1.7 points more words wrong. A discrete GPU should be much faster; none has been tried. Note the last row: the ROCm image's CPU fallback is also a little slower and less accurate than the standard image, so use `compose.rocm.yaml` only on a machine where the GPU is the point.
+
+NVIDIA GPUs aren't set up: the code would use one, but the image has no CUDA libraries.
+
 ### Tuning reception
 
 - trunk-recorder logs `Requested Gain of 40.2 not supported, driver using: 0`. It's harmless: gr-osmosdr's rtl_tcp driver always reports 0, but the gain is applied. (USB dongles report the real gain.)
@@ -192,7 +230,7 @@ python3 -m venv --system-site-packages venv
 
 Labels and the sampled calls live in `testset/`, so the set survives clearing `logs/`. Scoring ignores case, punctuation and number formatting ("10-8" = "ten eight").
 
-Results so far (2026-11-08, 187 clips, large-v3):
+Results so far (2026-11-08, 187 clips, large-v3, on the CPU; [GPU](#gpu) has the GPU's numbers):
 
 - Current settings: **10.7% WER**. Most errors are in transmissions under 2 s (25%), against 12% at 2–5 s and 6% above.
 - Transcribing whole calls beats one transmission at a time: 10.7% vs 17.0%.

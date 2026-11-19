@@ -58,24 +58,73 @@ def clean_text(text):
     return "" if text.lower() in HALLUCINATIONS else text
 
 
-def split_words(segments, txs):
-    """Assign each word to the transmission it falls in (by word midpoint)."""
-    texts = [[] for _ in txs]
+def tx_words(segments, txs):
+    """Assign each word to the transmission it falls in (by word midpoint): [[(word, probability)]] per transmission."""
+    words = [[] for _ in txs]
     starts = [t[0] for t in txs]
     for seg in segments:
         for w in seg.words or []:
             mid = (w.start + w.end) / 2
             i = max([k for k, s in enumerate(starts) if s <= mid] or [0])
-            texts[i].append(w.word)
-    return [clean_text("".join(t).strip()) for t in texts]
+            words[i].append((w.word, w.probability))
+    return words
 
 
-def load_model(name, compute_type="int8", threads=None):
+def words_text(words):
+    """The transcript line for one transmission's tx_words() entry."""
+    return clean_text("".join(w for w, _ in words).strip())
+
+
+def split_words(segments, txs):
+    """The text of each transmission."""
+    return [words_text(ws) for ws in tx_words(segments, txs)]
+
+
+def gpu_compute_types():
+    """The compute types CTranslate2 can run on this machine's GPU; empty if it has no usable GPU.
+
+    CTranslate2 calls every GPU "cuda": NVIDIA with the PyPI wheel, AMD with its ROCm wheel."""
+    try:
+        import ctranslate2
+        if ctranslate2.get_cuda_device_count() < 1:
+            return set()
+        return set(ctranslate2.get_supported_compute_types("cuda"))
+    except Exception as e:  # a GPU build without its runtime libraries, a driver that won't start, ...
+        log(f"warning: GPU check failed: {e!r}")
+        return set()
+
+
+def load_model(name, compute_type=None, threads=None, device="auto"):
+    """Load Whisper on the GPU or the CPU; `model.model.device` ("cuda" or "cpu") says which it is.
+
+    device "auto" uses the GPU if there is one and Whisper actually runs on it, else the CPU.
+    "gpu" fails instead of falling back. compute_type None means float16 on a GPU (float32 if it
+    can't do float16) and int8 on the CPU; a given one is used on either."""
     from faster_whisper import WhisperModel
+    if device != "cpu":
+        types = gpu_compute_types()
+        try:
+            if not types:
+                raise RuntimeError("no GPU that CTranslate2 can use")
+            ct = compute_type or ("float16" if "float16" in types else "float32")
+            log(f"loading whisper model {name} on the GPU ({ct})...")
+            model = WhisperModel(name, device="cuda", compute_type=ct)
+            # A GPU can load the model and still fail on the first real work (unsupported chip,
+            # not enough memory), so run a second of noise through the whole pipeline first.
+            noise = np.random.default_rng(0).normal(0, 0.01, 16000).astype(np.float32)
+            transcribe(model, noise, vad_filter=False, word_timestamps=True)
+            log("whisper ready (GPU)")
+            return model
+        except Exception as e:
+            if device != "auto":
+                raise
+            log(f"GPU not used ({e}); falling back to the CPU")
+            model = None  # free whatever was loaded before loading again
     threads = threads or max(1, (os.cpu_count() or 4) // 2)
-    log(f"loading whisper model {name} ({compute_type}, {threads} threads)...")
-    model = WhisperModel(name, device="cpu", compute_type=compute_type, cpu_threads=threads)
-    log("whisper ready")
+    ct = compute_type or "int8"
+    log(f"loading whisper model {name} on the CPU ({ct}, {threads} threads)...")
+    model = WhisperModel(name, device="cpu", compute_type=ct, cpu_threads=threads)
+    log("whisper ready (CPU)")
     return model
 
 
@@ -389,17 +438,16 @@ class Transcriber:
         except (EOFError, wave.Error):
             return False  # still being copied into place
         dur = len(audio) / 16000
-        texts = [""] * len(txs)
+        words = [[] for _ in txs]
         if dur >= args.min_dur:
-            segments = transcribe(self.model, audio, self.prompts.build(tg, t_call), args.beam_size,
-                                  word_timestamps=True)
-            texts = split_words(segments, txs)
+            words = tx_words(self.transcribe(audio, self.prompts.build(tg, t_call)), txs)
+        texts = [words_text(ws) for ws in words]
         proc = time.time() - started
 
         label = tag or f"TG {tg}"
         wav_rel = os.path.relpath(audio_path, args.outdir)
         recs, lines, shown = [], [], []
-        for i, ((pos, length, rid, freq, errs), text) in enumerate(zip(txs, texts)):
+        for i, ((pos, length, rid, freq, errs), text, ws) in enumerate(zip(txs, texts, words)):
             if length is None:
                 nxt = txs[i + 1][0] if i + 1 < len(txs) else dur
                 length = max(0.0, nxt - pos)
@@ -408,7 +456,8 @@ class Transcriber:
             recs.append({
                 "time": ts.isoformat(timespec="seconds"), "duration": round(length, 2),
                 "tgid": tg, "tag": tag, "rid": rid, "freq": freq, "slot": call.get("tdma_slot", 0),
-                "text": text, "model": args.model, "proc_s": round(proc, 2),
+                "text": text, "words": [[w.strip(), round(p, 3)] for w, p in ws] if text else [],
+                "model": args.model, "proc_s": round(proc, 2),
                 "error_count": errs, "call": key, "wav": wav_rel,
             })
             if text:
@@ -426,6 +475,20 @@ class Transcriber:
         self.done.add(key)
         if len(self.pending) > 3:
             log(f"warning: transcription backlog {len(self.pending)} calls (last {dur:.1f}s call took {proc:.1f}s)")
+
+    def transcribe(self, audio, prompt):
+        """Whisper segments for one call. If the GPU fails mid-run, moves to the CPU for good
+        (unless --device gpu) and transcribes the call there."""
+        args = self.args
+        try:
+            return transcribe(self.model, audio, prompt, args.beam_size, word_timestamps=True)
+        except Exception as e:
+            if self.model.model.device == "cpu" or args.device != "auto":
+                raise
+            log(f"warning: GPU transcription failed ({e!r}); continuing on the CPU")
+        self.model = None
+        self.model = load_model(args.model, args.compute_type, args.threads, device="cpu")
+        return transcribe(self.model, audio, prompt, args.beam_size, word_timestamps=True)
 
     def next_call(self, now):
         """(path, time first seen) of the next call to transcribe: live calls first (oldest first),
@@ -453,7 +516,7 @@ class Transcriber:
         log(f"watching {args.media_dir}: {len(existing)} untranscribed calls already there"
             + (" (transcribing them oldest first; new calls jump the queue)" if args.backfill
                else " (skipped; --backfill to include)"))
-        self.model = load_model(args.model, args.compute_type, args.threads)
+        self.model = load_model(args.model, args.compute_type, args.threads, args.device)
 
         last_scan = 0.0
         while not self.stopping:
@@ -500,8 +563,11 @@ def main():
     ap.add_argument("--once", action="store_true", help="transcribe all pending calls, then exit (implies --backfill)")
     ap.add_argument("--interval", type=float, default=1.0, help="seconds between scans for new calls")
     ap.add_argument("--model", default=os.environ.get("WHISPER_MODEL") or "large-v3")
-    ap.add_argument("--compute-type", default="int8")
-    ap.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 4) // 2))
+    ap.add_argument("--device", choices=["auto", "gpu", "cpu"], default=os.environ.get("WHISPER_DEVICE") or "auto",
+                    help="auto: the GPU if Whisper runs on it, else the CPU; gpu: fail without one "
+                         "(default: $WHISPER_DEVICE, else auto)")
+    ap.add_argument("--compute-type", help="default: float16 on a GPU, int8 on the CPU")
+    ap.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 4) // 2), help="CPU threads")
     ap.add_argument("--beam-size", type=int, default=5)
     ap.add_argument("--min-dur", type=float, default=0.6, help="skip calls shorter than this (seconds)")
     ap.add_argument("--prompt", help="one initial prompt for every talkgroup (default: per talkgroup from --prompts)")

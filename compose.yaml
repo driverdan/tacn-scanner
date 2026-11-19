@@ -58,9 +58,10 @@ services:
     container_name: transcriber
     user: "${SCANNER_UID:-1000}:${SCANNER_GID:-1000}"
     init: true
-    env_file: config/scanner.conf    # WHISPER_MODEL
+    env_file: config/scanner.conf    # WHISPER_MODEL, WHISPER_DEVICE
     volumes:
       - ./logs/trunk-recorder:/data
+      - pi-media:/data/media:ro
       - ./config:/config:ro
       - ${HOME}/.cache/huggingface:/models    # the host's Hugging Face cache: no second model download
       - /etc/localtime:/etc/localtime:ro      # transcript times in the host's timezone
@@ -68,3 +69,11 @@ services:
     restart: unless-stopped
     stop_grace_period: 2m    # SIGTERM lets the call in progress finish
     logging: *logging
+
+volumes:
+  pi-media:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=192.168.8.132,ro,nfsvers=4.2,actimeo=1"
+      device: ":/home/dan/tacn-scanner/logs/trunk-recorder/media"

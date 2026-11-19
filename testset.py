@@ -380,7 +380,8 @@ def run_whisper(d, clips, args):
         if same_call:
             recent += [t for t in (c.get("call_drafts") or [])[:c["tx"]] if t]
         return prompts.build(c["tgid"], recent=recent)
-    model = load_model(args.model, args.compute_type, args.threads)
+    model = load_model(args.model, args.compute_type, args.threads, args.device)
+    args.ran_on = "GPU" if model.model.device == "cuda" else "CPU"
     audio, hyps, t0 = CallAudio(d), {}, time.time()
     if args.mode == "clip":  # each transmission on its own
         for k, c in enumerate(clips, 1):
@@ -469,7 +470,7 @@ def score(d, args):
         desc = f"live transcripts saved at sampling ({', '.join(sorted({str(c['draft_model']) for c in clips}))})"
     else:
         hyps = run_whisper(d, clips, args)
-        desc = f"{args.model}, {args.mode} mode, beam {args.beam_size}" + "".join(f", {s}" for s in args.set) \
+        desc = f"{args.model}, {args.ran_on}, {args.mode} mode, beam {args.beam_size}" + "".join(f", {s}" for s in args.set) \
             + (f", prompt {args.prompt[:40]!r}" if args.prompt is not None else
                f", prompts {os.path.relpath(args.prompts) if os.path.exists(args.prompts) else 'DEFAULT_PROMPT'}") \
             + (f", context {args.context} lines/{args.context_window:.0f}s" if args.context else "")
@@ -535,7 +536,9 @@ def main():
     sp.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
                     help="override a faster-whisper transcribe() option, e.g. vad_filter=False (repeatable)")
     sp.add_argument("--model", default=os.environ.get("WHISPER_MODEL", "large-v3"))
-    sp.add_argument("--compute-type", default="int8")
+    sp.add_argument("--device", choices=["auto", "gpu", "cpu"], default=os.environ.get("WHISPER_DEVICE") or "auto",
+                    help="auto: the GPU if Whisper runs on it, else the CPU (default: $WHISPER_DEVICE, else auto)")
+    sp.add_argument("--compute-type", help="default: float16 on a GPU, int8 on the CPU")
     sp.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 4) // 2))
     sp.add_argument("--beam-size", type=int, default=5)
     sp.add_argument("--prompt", help="one initial prompt for every clip (default: per talkgroup from --prompts)")
